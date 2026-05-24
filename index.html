@@ -114,7 +114,7 @@
           </div>
           
           <!-- ヒント（おやつ）ボタン -->
-          <div class="hint-action-area">
+          <div id="hint-action-area" class="hint-action-area">
             <button id="btn-quiz-hint" class="btn btn-accent">
               <span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！
             </button>
@@ -128,6 +128,11 @@
             <button id="opt-3" class="btn btn-option">選択肢 3</button>
             <button id="opt-4" class="btn btn-option">選択肢 4</button>
           </div>
+        </div>
+
+        <!-- クイズをやめるボタン（カードの下側に配置） -->
+        <div class="quiz-footer-action">
+          <button id="btn-quit-quiz" class="btn btn-secondary">クイズをやめる 🏠</button>
         </div>
       </section>
 
@@ -165,6 +170,7 @@
           <h2>クイズおつかれさまでした！</h2>
           <div class="result-stats">
             <p class="result-score">正解数： <span id="result-score-val">0</span> / 10 問</p>
+            <p class="result-score">スコア： <span id="result-points-val">0</span> / 100 点</p>
             <p id="result-message" class="result-msg">すごい！たくさん正解できたね！</p>
           </div>
           
@@ -179,6 +185,7 @@
           <div class="button-group">
             <button id="btn-restart-game" class="btn btn-primary btn-large">もういちど遊ぶ 🐾</button>
             <button id="btn-go-to-dict" class="btn btn-secondary btn-large">図鑑を見にいく 📖</button>
+            <button id="btn-result-back-to-menu" class="btn btn-secondary btn-large">スタート画面に戻る 🏠</button>
           </div>
         </div>
       </section>

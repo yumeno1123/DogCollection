@@ -17,7 +17,8 @@ let currentQuestionIndex = 0; // 現在何問目か（0〜9）
 let currentQuestionDog = null; // 現在出題中の犬のデータ
 let currentDogImageUrl = "";   // 現在出題中の犬の画像URL
 let currentScore = 0;          // 今回のクイズの正解数
-let hintCount = 0;             // 現在の問題でヒントを使った回数（0〜3）
+let currentPoints = 0;         // 今回のクイズの獲得スコア（最大100点）
+let hintCount = 0;             // 現在の問題でヒントを使った回数（0〜4）
 let quizMode = 'popular';      // 出題モード（'popular' or 'all'）
 let difficulty = 'easy';       // 難易度（'easy' or 'hard'）
 
@@ -37,6 +38,8 @@ const elBtnBackToMenu = document.getElementById('btn-back-to-menu');
 const elBtnRestart = document.getElementById('btn-restart-game');
 const elBtnGoToDict = document.getElementById('btn-go-to-dict');
 const elBtnHint = document.getElementById('btn-quiz-hint');
+const elBtnQuit = document.getElementById('btn-quit-quiz'); // クイズをやめるボタン
+const elBtnResultBackToMenu = document.getElementById('btn-result-back-to-menu'); // 結果画面からスタートに戻るボタン
 
 // クイズ画面の要素
 const elQuizProgress = document.getElementById('quiz-progress-text');
@@ -44,6 +47,7 @@ const elQuizScore = document.getElementById('quiz-score-text');
 const elQuizDogImg = document.getElementById('quiz-dog-image');
 const elTextHintBox = document.getElementById('text-hint-box');
 const elLoading = document.getElementById('loading-indicator');
+const elHintActionArea = document.getElementById('hint-action-area');
 const elHintStatus = document.getElementById('hint-status-text');
 const elOptions = [
   document.getElementById('opt-1'),
@@ -63,6 +67,7 @@ const elBtnFilterUncollected = document.getElementById('btn-filter-uncollected')
 
 // 結果画面の要素
 const elResultScoreVal = document.getElementById('result-score-val');
+const elResultPointsVal = document.getElementById('result-points-val');
 const elResultMessage = document.getElementById('result-message');
 const elNewUnlocksBox = document.getElementById('new-unlocks-box');
 const elNewUnlocksList = document.getElementById('new-unlocks-list');
@@ -100,6 +105,9 @@ function setupEventListeners() {
   // 画面遷移：スタート画面 -> クイズ画面
   elBtnStart.addEventListener('click', startQuizGame);
 
+  // 画面遷移：クイズ画面 -> スタート画面（クイズを中断）
+  elBtnQuit.addEventListener('click', quitQuiz);
+
   // 画面遷移：スタート画面 -> 図鑑画面
   elBtnViewDict.addEventListener('click', () => {
     switchScreen('dictionary-screen');
@@ -118,6 +126,11 @@ function setupEventListeners() {
   elBtnGoToDict.addEventListener('click', () => {
     switchScreen('dictionary-screen');
     renderDictionary();
+  });
+
+  // 画面遷移：結果画面 -> スタート画面
+  elBtnResultBackToMenu.addEventListener('click', () => {
+    switchScreen('start-screen');
   });
 
   // ヒントボタン
@@ -141,6 +154,14 @@ function switchScreen(screenId) {
   document.getElementById(screenId).classList.remove('hidden');
 }
 
+// クイズを途中で終了する処理
+function quitQuiz() {
+  const confirmQuit = confirm("クイズを途中でやめますか？\n（ここまでの正解数は図鑑に保存されません）");
+  if (confirmQuit) {
+    switchScreen('start-screen');
+  }
+}
+
 
 // ================= クイズゲームのロジック ================= //
 
@@ -156,6 +177,7 @@ function startQuizGame() {
   // 進行状況の初期化
   currentQuestionIndex = 0;
   currentScore = 0;
+  currentPoints = 0;
   newlyUnlockedDogs = []; // 新規解放リストの初期化
 
   // 2. 出題する10問の犬種リストを作成
@@ -229,23 +251,25 @@ async function showQuestion() {
 
   // 進行状況テキストの更新
   elQuizProgress.textContent = `第 ${currentQuestionIndex + 1} 問 / 10問中`;
-  elQuizScore.textContent = `せいかい：${currentScore}`;
+  elQuizScore.textContent = `スコア：${currentPoints} 点 / せいかい：${currentScore}問`;
 
   // 現在の問題の犬種キー
   const dogKey = currentQuizList[currentQuestionIndex];
   currentQuestionDog = getDogData(dogKey);
   currentQuestionDog.key = dogKey; // キー自体も参照できるように保存
 
-  // 難易度に応じたぼかしクラスの適用
+  // 難易度に応じたぼかしクラスの適用とヒント表示制御
   elQuizDogImg.className = ''; // クラス初期化
   if (difficulty === 'hard') {
-    elQuizDogImg.classList.add('blur-level-3'); // 強いぼかし
+    elQuizDogImg.classList.add('blur-level-4'); // 強いぼかし (25px)
+    elHintActionArea.classList.remove('hidden'); // むずかしいモードではヒントを表示する
     elBtnHint.disabled = false;
     elHintStatus.textContent = "※おやつをあげると写真が見えやすくなるよ";
   } else {
     elQuizDogImg.classList.add('blur-level-0'); // ぼかしなし
+    elHintActionArea.classList.add('hidden');    // かんたんモードではヒントを表示しない
     elBtnHint.disabled = true;
-    elHintStatus.textContent = "かんたんモードなのでヒントは使えません";
+    elHintStatus.textContent = "";
   }
 
   // DogAPIから画像の取得（非同期処理）
@@ -276,8 +300,14 @@ function showLoading(isLoading) {
 
 // DogAPIからランダム画像URLを取得する
 async function fetchDogImage(cleanKey) {
-  // API用のブリード名に変換 (例: "poodle-toy" -> "poodle/toy")
-  const apiBreed = cleanKey.replace('-', '/');
+  // DogAPI側のキー名とのズレを調整
+  let apiBreed = cleanKey;
+  if (cleanKey === 'husky-siberian') {
+    apiBreed = 'husky'; // DogAPIではシベリアンハスキーは単に 'husky' として管理されているため
+  } else {
+    // API用のブリード名に変換 (例: "poodle-toy" -> "poodle/toy")
+    apiBreed = cleanKey.replace('-', '/');
+  }
   
   // DogAPIの個別犬種画像取得API
   const url = `https://dog.ceo/api/breed/${apiBreed}/images/random`;
@@ -335,14 +365,41 @@ function selectAnswer(selectedKey, clickedBtn) {
   // ぼかしを完全に解除する
   elQuizDogImg.className = 'blur-level-0';
 
+  // 出題（回答）回数の更新
+  const prevAttempts = saveData[`${correctKey}_attempts`] || 0;
+  saveData[`${correctKey}_attempts`] = prevAttempts + 1;
+
   if (isCorrect) {
     // 正解の場合
     clickedBtn.classList.add('correct');
     currentScore++;
     
-    // セーブデータの更新
+    // 難易度に応じた点数を計算
+    let pointsEarned = 0;
+    if (difficulty === 'easy') {
+      pointsEarned = 4; // かんたんモードは一律4点
+    } else {
+      // むずかしいモード：ヒント回数に応じた点数を計算（ノーヒント:10点、1回:8点、2回:6点、3回:4点、4回:2点）
+      if (hintCount === 0) pointsEarned = 10;
+      else if (hintCount === 1) pointsEarned = 8;
+      else if (hintCount === 2) pointsEarned = 6;
+      else if (hintCount === 3) pointsEarned = 4;
+      else if (hintCount === 4) pointsEarned = 2;
+    }
+
+    currentPoints += pointsEarned;
+    elQuizScore.textContent = `スコア：${currentPoints} 点 / せいかい：${currentScore}問`;
+    
+    // セーブデータの更新（正解回数）
     const prevWins = saveData[correctKey] || 0;
     saveData[correctKey] = prevWins + 1;
+
+    // 犬種ごとのベストスコア（ハイスコア）を保存する
+    const prevHighScore = saveData[`${correctKey}_highscore`] || 0;
+    if (pointsEarned > prevHighScore) {
+      saveData[`${correctKey}_highscore`] = pointsEarned;
+    }
+
     saveGameData(); // ローカルストレージに書き込み
 
     // 新しく図鑑情報が解放されたかチェック（1, 2, 3回目に達した時）
@@ -365,10 +422,15 @@ function selectAnswer(selectedKey, clickedBtn) {
         btn.classList.add('correct');
       }
     });
+
+    saveGameData(); // 回答回数（attempts）を保存するため書き込み
   }
 
   // 1.8秒後に次の問題または結果画面へ
   setTimeout(() => {
+    // クイズ画面が非表示（クイズをやめた場合）なら処理を中断するガード処理
+    if (elQuizScreen.classList.contains('hidden')) return;
+
     currentQuestionIndex++;
     if (currentQuestionIndex < 10) {
       showQuestion();
@@ -380,18 +442,24 @@ function selectAnswer(selectedKey, clickedBtn) {
 
 // ヒント機能（おやつをあげる）の処理
 function useHint() {
-  if (difficulty !== 'hard' || hintCount >= 3) return;
+  if (difficulty !== 'hard' || hintCount >= 4) return;
 
   hintCount++;
 
   if (hintCount === 1) {
     // 1回目のヒント：ぼかしを少し弱くする
     elQuizDogImg.className = '';
-    elQuizDogImg.classList.add('blur-level-2');
-    elHintStatus.textContent = "写真が少しだけ見えてきたよ！(ヒント残り2回)";
+    elQuizDogImg.classList.add('blur-level-3');
+    elHintStatus.textContent = "写真が少しだけ見えてきたよ！(ヒント残り3回)";
   } 
   else if (hintCount === 2) {
-    // 2回目のヒント：さらにぼかしを弱くし、4つの選択肢から不正解を2つ消す
+    // 2回目のヒント：さらにぼかしを弱くする
+    elQuizDogImg.className = '';
+    elQuizDogImg.classList.add('blur-level-2');
+    elHintStatus.textContent = "写真がさらによく見えてきたよ！(ヒント残り2回)";
+  } 
+  else if (hintCount === 3) {
+    // 3回目のヒント：さらにぼかしを弱くし、4つの選択肢から不正解を2つ消す
     elQuizDogImg.className = '';
     elQuizDogImg.classList.add('blur-level-1');
     
@@ -412,8 +480,8 @@ function useHint() {
 
     elHintStatus.textContent = "ハズレの選択肢が２つ消えたよ！(ヒント残り1回)";
   } 
-  else if (hintCount === 3) {
-    // 3回目のヒント：ぼかしを解除し、頭文字ヒントを出す
+  else if (hintCount === 4) {
+    // 4回目のヒント：ぼかしを解除し、頭文字ヒントを出す
     elQuizDogImg.className = '';
     elQuizDogImg.classList.add('blur-level-0');
 
@@ -436,16 +504,17 @@ function useHint() {
 function showResultScreen() {
   switchScreen('result-screen');
 
-  // スコアの表示
+  // スコア・正解数の表示
   elResultScoreVal.textContent = currentScore;
+  elResultPointsVal.textContent = currentPoints;
 
-  // スコアに応じたメッセージ
-  if (currentScore === 10) {
-    elResultMessage.textContent = "パーフェクト！あなたは立派なわんわん博士だね！🐶✨";
-  } else if (currentScore >= 7) {
-    elResultMessage.textContent = "すごい！たくさんの犬種を知っているんだね！🐾";
-  } else if (currentScore >= 4) {
-    elResultMessage.textContent = "がんばったね！図鑑を見て犬種をおぼえていこう！📖";
+  // 獲得スコアに応じたメッセージ
+  if (currentPoints === 100) {
+    elResultMessage.textContent = "パーフェクト！ノーヒントで全問大正解！あなたは立派なわんわん博士だね！🐶✨";
+  } else if (currentPoints >= 80) {
+    elResultMessage.textContent = "すごい！少ないヒントで高得点だね！🐾";
+  } else if (currentPoints >= 50) {
+    elResultMessage.textContent = "がんばったね！ヒントをうまく使ってクリアできたよ！📖";
   } else {
     elResultMessage.textContent = "クイズに挑戦してくれてありがとう！もう一回やってみよう！🐶";
   }
@@ -460,8 +529,8 @@ function showResultScreen() {
       elItem.className = 'unlock-item';
 
       let stageText = '';
-      if (item.stage === 1) stageText = 'シルエット解放！';
-      if (item.stage === 2) stageText = 'カラー写真公開！';
+      if (item.stage === 1) stageText = 'カラー写真公開！';
+      if (item.stage === 2) stageText = '生物情報がよめるよ！';
       if (item.stage === 3) stageText = '豆知識がよめるよ！';
 
       elItem.innerHTML = `
@@ -512,6 +581,9 @@ function renderDictionary() {
   allKeys.forEach(key => {
     const dogWins = saveData[key] || 0;
     const dogData = getDogData(key);
+    const highScore = saveData[`${key}_highscore`] || (dogWins > 0 ? 10 : 0);
+    const attempts = saveData[`${key}_attempts`] || dogWins;
+    const accuracy = attempts > 0 ? Math.round((dogWins / attempts) * 100) : 0;
 
     // フィルターの適用
     if (currentFilter === 'collected' && dogWins === 0) return;
@@ -527,6 +599,8 @@ function renderDictionary() {
     let actionBtnHtml = '';
 
     // 段階的解放の適用
+    let infoHtml = ''; // 基本情報のHTML（原産国・大きさ）
+
     if (dogWins === 0) {
       // 0回：未解放（ロック）
       elCard.className = 'dict-card locked';
@@ -537,12 +611,21 @@ function renderDictionary() {
       `;
     } 
     else if (dogWins === 1) {
-      // 1回：シルエットと名前のみ
-      elCard.className = 'dict-card silhouette';
+      // 1回：カラー写真と名前のみ
+      elCard.className = 'dict-card unlocked-1';
       nameHtml = dogData.japanese;
       
-      // 画像表示（CSSでbrightness(0)されて黒い影になる）
-      imageHtml = `<img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=150" alt="シルエット">`;
+      // 画像を非同期で読み込む
+      imageHtml = `<img id="dict-img-${key.replace('-','_')}" src="" alt="${dogData.japanese}">`;
+      loadDictCardImage(key);
+
+      infoHtml = `
+        <div class="dict-info-text">原産国：？？？</div>
+        <div class="dict-info-text">大きさ：？？？</div>
+        <div class="dict-info-text">ベスト：${highScore}点</div>
+        <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
+      `;
+
       starsHtml = `
         <div class="star-indicator">
           <span class="active">🐾</span><span>🐾</span><span>🐾</span>
@@ -550,15 +633,19 @@ function renderDictionary() {
       `;
     } 
     else if (dogWins === 2) {
-      // 2回：写真も公開（カラー）
+      // 2回：生物情報（原産国・大きさ）も公開
       elCard.className = 'dict-card unlocked-2';
       nameHtml = dogData.japanese;
 
-      // 静的な仮画像ではなく、DogAPIから写真を表示させたいが、図鑑一覧で毎回API通信すると重いため、
-      // 2段階目に達した際にAPIから保存したURLを利用するか、または汎用的な可愛いイラスト/APIから非同期で動的取得する。
-      // ここでは、ユーザー体験向上のため、各カード描画時にDogAPIからランダムな写真を非同期で1枚取得してセットする。
       imageHtml = `<img id="dict-img-${key.replace('-','_')}" src="" alt="${dogData.japanese}">`;
-      loadDictCardImage(key); // 画像を非同期で読み込む関数
+      loadDictCardImage(key); 
+
+      infoHtml = `
+        <div class="dict-info-text">原産国：${dogData.origin}</div>
+        <div class="dict-info-text">大きさ：${dogData.size}</div>
+        <div class="dict-info-text">ベスト：${highScore}点</div>
+        <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
+      `;
 
       starsHtml = `
         <div class="star-indicator">
@@ -574,6 +661,13 @@ function renderDictionary() {
       imageHtml = `<img id="dict-img-${key.replace('-','_')}" src="" alt="${dogData.japanese}">`;
       loadDictCardImage(key);
 
+      infoHtml = `
+        <div class="dict-info-text">原産国：${dogData.origin}</div>
+        <div class="dict-info-text">大きさ：${dogData.size}</div>
+        <div class="dict-info-text">ベスト：${highScore}点</div>
+        <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
+      `;
+
       starsHtml = `
         <div class="star-indicator">
           <span class="active">🐾</span><span class="active">🐾</span><span class="active">🐾</span>
@@ -588,6 +682,7 @@ function renderDictionary() {
         ${imageHtml}
       </div>
       <div class="dict-dog-name">${nameHtml}</div>
+      ${infoHtml}
       ${starsHtml}
       ${actionBtnHtml}
     `;

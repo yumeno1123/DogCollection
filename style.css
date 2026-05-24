@@ -338,16 +338,20 @@ body {
 }
 
 /* ぼかし（モザイク風）の段階クラス */
-.blur-level-3 {
-  filter: blur(30px) !important;
+.blur-level-4 {
+  filter: blur(25px) !important;
 }
 
-.blur-level-2 {
+.blur-level-3 {
   filter: blur(15px) !important;
 }
 
+.blur-level-2 {
+  filter: blur(8px) !important;
+}
+
 .blur-level-1 {
-  filter: blur(6px) !important;
+  filter: blur(3px) !important;
 }
 
 .blur-level-0 {
@@ -494,7 +498,15 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 180px;
+  min-height: 260px; /* テキスト（ベストスコア、正答率）追加に伴い調整 */
+}
+
+/* 図鑑カード内の生物情報テキスト */
+.dict-info-text {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-top: 2px;
+  font-weight: 700;
 }
 
 .dict-card.unlocked-3 {
@@ -761,3 +773,10 @@ body {
     opacity: 1;
   }
 }
+
+/* クイズ画面のフッターアクション（クイズをやめるボタン） */
+.quiz-footer-action {
+  text-align: center;
+  margin-top: 16px;
+}
+

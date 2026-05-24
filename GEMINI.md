@@ -23,15 +23,68 @@ DogAPI（インターネット上の犬のデータを提供する仕組み）�
 
 | ファイル名 | 配置パス | 説明 | 追加日 | バージョン |
 | :--- | :--- | :--- | :--- | :--- |
-| [GEMINI.md](file:///c:/Users/Owner/Documents/myproject/DogCollection/GEMINI.md) | `c:/Users/Owner/Documents/myproject/DogCollection/GEMINI.md` | プロジェクト管理・開発状況記録ドキュメント | 2026-05-24 | v1.0.0 |
-| [dictionary.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/dictionary.js) | `c:/Users/Owner/Documents/myproject/DogCollection/dictionary.js` | 犬種名の日本語翻訳と豆知識データベース | 2026-05-24 | v1.0.0 |
-| [index.html](file:///c:/Users/Owner/Documents/myproject/DogCollection/index.html) | `c:/Users/Owner/Documents/myproject/DogCollection/index.html` | アプリ画面レイアウト（スタート、クイズ、図鑑、結果画面） | 2026-05-24 | v1.0.0 |
-| [style.css](file:///c:/Users/Owner/Documents/myproject/DogCollection/style.css) | `c:/Users/Owner/Documents/myproject/DogCollection/style.css` | アプリデザインスタイル（配色、カード、アニメーション、ぼかし） | 2026-05-24 | v1.0.0 |
-| [app.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/app.js) | `c:/Users/Owner/Documents/myproject/DogCollection/app.js` | アプリの動作ロジック（API接続、クイズ制御、図鑑制御、データ保存） | 2026-05-24 | v1.0.0 |
+| [GEMINI.md](file:///c:/Users/Owner/Documents/myproject/DogCollection/GEMINI.md) | `c:/Users/Owner/Documents/myproject/DogCollection/GEMINI.md` | プロジェクト管理・開発状況記録ドキュメント | 2026-05-24 | v1.1.0 |
+| [dictionary.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/dictionary.js) | `c:/Users/Owner/Documents/myproject/DogCollection/dictionary.js` | 犬種名の日本語翻訳と豆知識データベース | 2026-05-24 | v1.0.4 |
+| [index.html](file:///c:/Users/Owner/Documents/myproject/DogCollection/index.html) | `c:/Users/Owner/Documents/myproject/DogCollection/index.html` | アプリ画面レイアウト（スタート、クイズ、図鑑、結果画面） | 2026-05-24 | v1.0.4 |
+| [style.css](file:///c:/Users/Owner/Documents/myproject/DogCollection/style.css) | `c:/Users/Owner/Documents/myproject/DogCollection/style.css` | アプリデザインスタイル（配色、カード、アニメーション、ぼかし） | 2026-05-24 | v1.0.7 |
+| [app.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/app.js) | `c:/Users/Owner/Documents/myproject/DogCollection/app.js` | アプリの動作ロジック（API接続、クイズ制御、図鑑制御,データ保存） | 2026-05-24 | v1.0.9 |
 
 ---
 ## 4. 変更履歴
 コードやドキュメントの重要な変更履歴を記録します。
+
+### v1.1.0 (2026-05-24)
+- 難易度「かんたん（ぼかし無し）」モードでの獲得スコアを一律4点に変更（`app.js`）。
+- 図鑑に犬種ごとの「正答率」を表示する機能を追加。
+  - クイズでプレイヤーが回答を選択した瞬間（正誤不問）に遭遇（回答）回数（`${correctKey}_attempts`）をカウントアップしてセーブデータに保存（`app.js`）。
+  - 図鑑描画時（`renderDictionary`）に遭遇回数と正解回数（`wins`）から正答率を計算し、カード内に `正答率：〇% (〇/〇回)` として表示（`app.js`）。
+  - 過去データ（遭遇回数がないデータ）は、正解回数＝遭遇回数（正答率100%）とみなして処理する互換ロジックを実装。
+  - 表示テキスト増加に伴い、図鑑カードの最小高さを 260px に調整（`style.css`）。
+
+### v1.0.9 (2026-05-24)
+- 犬種ごとに取得したベストスコア（点数）を図鑑に記録・表示する機能を追加。
+  - クイズ正解時に獲得した点数を、その犬種のベストスコア（`${correctKey}_highscore`）として保存するロジックを追加（`app.js`）。
+  - 図鑑一覧（`renderDictionary`）の解放済みカード内に「ベスト：〇点」を表示（`app.js`）。
+  - 文字増加に合わせて図鑑カードの最小高さを 240px に調整（`style.css`）。
+
+### v1.0.8 (2026-05-24)
+- ヒントの使用回数に応じた減点スコアシステムを追加。
+  - 正解時の得点をヒント回数に応じて変動（0回: 10点、1回: 8点、2回: 6点、3回: 4点、4回: 2点、不正解: 0点）とし、10問で最大100点満点とする（`app.js`）。
+  - クイズ中および結果画面に「獲得スコア」を表示できるようにUIを更新（`index.html`, `app.js`）。
+  - 結果画面の判定メッセージを、正解数ベースから獲得スコアベースに刷新（`app.js`）。
+
+### v1.0.7 (2026-05-24)
+- 難易度「むずかしい」の初期状態のぼかし強度を25px（従来の30pxから変更）に緩和（`style.css`）。
+- ヒント（おやつ）の最大使用回数を3回から4回に変更し、段階的なぼかし変化を調整（`app.js`, `style.css`）。
+- ヒント効果の発生タイミングを変更（3回目のヒント使用時に不正解の選択肢が2つ消え、4回目で頭文字テキストヒントを表示するよう修正）（`app.js`）。
+
+### v1.0.6 (2026-05-24)
+- `dictionary.js` 内の犬種名表記「ケアーンテリア」を「ケアーン・テリア」（中黒あり）に統一し、クイズの選択肢における表記のブレを解消。
+
+### v1.0.5 (2026-05-24)
+- クイズ結果画面（`index.html`）のカード下部ボタンエリアに「スタート画面に戻る」ボタンを追加。
+- `app.js` にて結果画面のボタンクリック時にスタート画面に戻る遷移処理を追加。
+
+### v1.0.4 (2026-05-24)
+- クイズを途中で終了する機能を追加。
+- クイズ画面（`index.html`）のカード下部に「クイズをやめる」ボタンを追加。
+- ボタンの余白や配置を調整するスタイルを `style.css` に追加。
+- `app.js` にて終了ボタンクリック時に確認ダイアログ（`confirm`）を表示し、承認時にスタート画面に戻る遷移処理を実装。
+- 中断直後にタイマー演出によって問題が進んでしまう不具合を防ぐためのガード処理を追加。
+
+### v1.0.3 (2026-05-24)
+- 図鑑の段階的解放システムを変更（シルエット表示を廃止し、1回目でカラー写真、2回目で生物情報[原産国・大きさ]、3回目で豆知識[解説文]を解放）。
+- `dictionary.js` 内の主要25種データに `origin` と `size` プロパティを追加。
+- `style.css` にて図鑑カードの最小高さを調整し、情報テキストスタイルを追加。
+- `app.js` の図鑑描画および結果画面の解放テキストを新仕様に合わせて更新。
+
+### v1.0.2 (2026-05-24)
+- 「シベリアンハスキー」が正解の問題で画像がエラーになり、予備の「ビーグル」画像が表示される不具合を修正。
+- DogAPIとのキー名のズレ（`husky-siberian` を `husky` にマッピングする処理）を `app.js` の `fetchDogImage` 関数内に追加。
+
+### v1.0.1 (2026-05-24)
+- かんたんモード時にヒントボタンを含むエリア全体を表示しないように変更（`index.html` および `app.js` の修正）。
+- 不要となった「かんたんモードなのでヒントは使えません」のテキスト表示を削除。
 
 ### v1.0.0 (2026-05-24)
 - 全ての実装が完了（index.html, style.css, dictionary.js, app.js）。
