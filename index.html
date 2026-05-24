@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DogAPIを使用した、かわいい犬種当てクイズゲームとコレクション式ポケット犬種図鑑の統合アプリです。クイズを遊んで、自分だけの図鑑を完成させよう！">
+  <title>わんわんクイズ＆ポケット犬種図鑑</title>
+  
+  <!-- かわいらしい丸文字フォント（M PLUS Rounded 1c）の読み込み -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- CSSファイルの読み込み -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- アプリのメインコンテナ -->
+  <div id="app-container">
+    
+    <!-- ヘッダーエリア -->
+    <header id="main-header">
+      <h1 id="app-title">🐾 わんわんクイズ＆ポケット犬種図鑑 🐾</h1>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main id="main-content">
+      
+      <!-- ================= START SCREEN (スタート画面) ================= -->
+      <section id="start-screen" class="app-screen">
+        <div class="card welcome-card">
+          <div class="dog-illustration">🐶</div>
+          <h2>クイズで遊んで図鑑をあつめよう！</h2>
+          <p class="subtitle">クイズに正解すると、その犬種が図鑑に登録されていきます。3回正解すると詳しい豆知識も読めるようになるよ！</p>
+          
+          <!-- ゲーム設定エリア -->
+          <div class="settings-box">
+            <!-- 設定：出題モード -->
+            <div class="setting-group">
+              <h3>1. 出題モード（でてくる犬の種類）</h3>
+              <div class="radio-tile-group">
+                <div class="input-container">
+                  <input id="mode-popular" type="radio" name="出題モード" value="popular" checked>
+                  <div class="radio-tile">
+                    <span class="emoji">🐕</span>
+                    <label for="mode-popular">おなじみの犬種</label>
+                  </div>
+                </div>
+                <div class="input-container">
+                  <input id="mode-all" type="radio" name="出題モード" value="all">
+                  <div class="radio-tile">
+                    <span class="emoji">🌍</span>
+                    <label for="mode-all">全犬種モード</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 設定：難易度（ぼかし） -->
+            <div class="setting-group">
+              <h3>2. クイズのむずかしさ（ぼかし）</h3>
+              <div class="radio-tile-group">
+                <div class="input-container">
+                  <input id="diff-easy" type="radio" name="難易度" value="easy" checked>
+                  <div class="radio-tile">
+                    <span class="emoji">✨</span>
+                    <label for="diff-easy">かんたん (ぼかしなし)</label>
+                  </div>
+                </div>
+                <div class="input-container">
+                  <input id="diff-hard" type="radio" name="難易度" value="hard">
+                  <div class="radio-tile">
+                    <span class="emoji">🌫️</span>
+                    <label for="diff-hard">むずかしい (ぼかしあり)</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- スタート＆図鑑ボタン -->
+          <div class="button-group">
+            <button id="btn-start-game" class="btn btn-primary btn-large">クイズをはじめる！ 🐾</button>
+            <button id="btn-view-dictionary" class="btn btn-secondary btn-large">図鑑をみる 📖</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= QUIZ SCREEN (クイズ画面) ================= -->
+      <section id="quiz-screen" class="app-screen hidden">
+        <!-- 進行状況エリア -->
+        <div class="quiz-info-bar">
+          <div id="quiz-progress-text">第 1 問 / 10問中</div>
+          <div id="quiz-score-text">せいかい：0</div>
+        </div>
+        
+        <!-- クイズのメインカード -->
+        <div class="card quiz-card">
+          <!-- 犬の画像表示コンテナ -->
+          <div class="dog-image-container">
+            <img id="quiz-dog-image" src="" alt="クイズ用の犬の画像" class="blur-easy">
+            <!-- ロード中の肉球てくてく表示 -->
+            <div id="loading-indicator" class="loading-overlay hidden">
+              <div class="paw-loader">
+                <div class="paw-icon">🐾</div>
+                <div class="loading-text">犬の写真をよみこみ中...</div>
+              </div>
+            </div>
+            <!-- テキストヒント表示用のエリア -->
+            <div id="text-hint-box" class="hint-message hidden">
+              💡 ヒント：この犬種は「」から始まるよ！
+            </div>
+          </div>
+          
+          <!-- ヒント（おやつ）ボタン -->
+          <div class="hint-action-area">
+            <button id="btn-quiz-hint" class="btn btn-accent">
+              <span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！
+            </button>
+            <p id="hint-status-text" class="hint-sub-text">※ヒントを使うと、もらえるポイントがすこし減るよ</p>
+          </div>
+          
+          <!-- 4択の回答ボタンエリア -->
+          <div class="quiz-options-grid">
+            <button id="opt-1" class="btn btn-option">選択肢 1</button>
+            <button id="opt-2" class="btn btn-option">選択肢 2</button>
+            <button id="opt-3" class="btn btn-option">選択肢 3</button>
+            <button id="opt-4" class="btn btn-option">選択肢 4</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= DICTIONARY SCREEN (図鑑画面) ================= -->
+      <section id="dictionary-screen" class="app-screen hidden">
+        <div class="dictionary-header">
+          <h2>📖 ポケット犬種図鑑 📖</h2>
+          <div id="dictionary-stats" class="stats-box">
+            あつめた犬種： <span id="collected-count">0</span> / <span id="total-count">0</span> 種 (<span id="collected-percent">0</span>%)
+          </div>
+          
+          <!-- 絞り込みフィルター -->
+          <div class="filter-box">
+            <button id="btn-filter-all" class="btn btn-filter active">すべて</button>
+            <button id="btn-filter-collected" class="btn btn-filter">あつめた犬</button>
+            <button id="btn-filter-uncollected" class="btn btn-filter">まだの犬</button>
+          </div>
+        </div>
+
+        <!-- 図鑑のグリッド表示 -->
+        <div id="dictionary-grid" class="dictionary-grid">
+          <!-- JavaScriptで動的にカードを生成して挿入します -->
+        </div>
+
+        <!-- 戻るボタン -->
+        <div class="footer-action">
+          <button id="btn-back-to-menu" class="btn btn-secondary btn-large">スタートがめんに戻る 🏠</button>
+        </div>
+      </section>
+
+      <!-- ================= RESULT SCREEN (結果発表画面) ================= -->
+      <section id="result-screen" class="app-screen hidden">
+        <div class="card result-card">
+          <div class="result-emoji">🎉</div>
+          <h2>クイズおつかれさまでした！</h2>
+          <div class="result-stats">
+            <p class="result-score">正解数： <span id="result-score-val">0</span> / 10 問</p>
+            <p id="result-message" class="result-msg">すごい！たくさん正解できたね！</p>
+          </div>
+          
+          <!-- 新しく図鑑に解放された犬のリスト表示 -->
+          <div id="new-unlocks-box" class="new-unlocks hidden">
+            <h3>🎁 新しく図鑑に登録されたよ！</h3>
+            <div id="new-unlocks-list" class="new-unlocks-list">
+              <!-- JavaScriptで追加 -->
+            </div>
+          </div>
+          
+          <div class="button-group">
+            <button id="btn-restart-game" class="btn btn-primary btn-large">もういちど遊ぶ 🐾</button>
+            <button id="btn-go-to-dict" class="btn btn-secondary btn-large">図鑑を見にいく 📖</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- フッターエリア -->
+    <footer id="main-footer">
+      <p>© 2026 わんわんクイズ＆ポケット犬種図鑑. Powered by DogAPI.</p>
+    </footer>
+
+  </div>
+
+  <!-- JavaScriptファイルの読み込み -->
+  <script src="dictionary.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

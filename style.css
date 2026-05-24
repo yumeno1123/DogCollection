@@ -1,0 +1,763 @@
+/**
+ * 犬種当てクイズ＆ポケット犬種図鑑
+ * 【style.css】
+ * 
+ * 概要：
+ * アプリ全体の「かわいくて親しみやすい」世界観を表現するデザイン定義ファイルです。
+ * 温かみのあるパステル系の配色、丸みを帯びたボタンやカード、
+ * ぼかし（モザイク）演出、およびローディングアニメーションを含みます。
+ */
+
+/* ================= 全体・ベース設定 ================= */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'M PLUS Rounded 1c', sans-serif; /* 丸みを帯びた日本語フォント */
+}
+
+:root {
+  --bg-color: #FDFBF7;        /* メイン背景：生成り・ミルク色 */
+  --card-bg: #FFFFFF;         /* カード背景：白 */
+  --text-dark: #4A3E3D;       /* テキスト色：少し茶色がかったダークブラウン */
+  --text-light: #8C7B75;      /* テキスト薄い色：カフェオレブラウン */
+  --primary: #FFB84C;         /* プライマリ（メイン）：優しいイエロー・オレンジ */
+  --primary-hover: #F8A427;   /* プライマリホバー時 */
+  --secondary: #F5EDCE;       /* セカンダリ：淡いベージュ */
+  --accent: #EAC7C7;          /* アクセント（おやつボタン等）：サクラピンク */
+  --accent-hover: #DDA8A8;    /* アクセントホバー時 */
+  --correct-color: #A0C3D2;   /* 正解時のカラー：パステルブルー・ミント */
+  --incorrect-color: #F7A4A4; /* 不正解時のカラー：パステルレッド */
+  --shadow: 0 8px 24px rgba(74, 62, 61, 0.08); /* 柔らかいシャドウ */
+  --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* スムーズなアニメーション遷移 */
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-dark);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 16px;
+  overflow-x: hidden;
+}
+
+/* アプリのコンテナ（最大横幅を設定して中央に寄せる） */
+#app-container {
+  width: 100%;
+  max-width: 640px;
+  min-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* ================= ヘッダー・フッター ================= */
+#main-header {
+  text-align: center;
+  padding: 16px 0;
+}
+
+#app-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  text-shadow: 2px 2px 0px rgba(255, 184, 76, 0.3);
+}
+
+#main-footer {
+  text-align: center;
+  padding: 16px 0;
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+
+/* ================= 共通コンポーネント ================= */
+/* カードUI */
+.card {
+  background: var(--card-bg);
+  border: 4px solid var(--secondary);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* ボタンの基本デザイン */
+.btn {
+  border: none;
+  border-radius: 50px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+  box-shadow: 0 4px 0 rgba(7A, 62, 61, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.btn:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.btn-large {
+  padding: 16px 32px;
+  font-size: 1.15rem;
+  width: 100%;
+}
+
+/* プライマリボタン (イエロー) */
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--text-dark);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  transform: scale(1.02);
+}
+
+.btn-primary:active {
+  transform: scale(0.98) translateY(4px);
+}
+
+/* セカンダリボタン (ベージュ・白) */
+.btn-secondary {
+  background-color: #FFFFFF;
+  border: 3px solid var(--secondary);
+  color: var(--text-dark);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-color);
+}
+
+/* アクセントボタン (サクラピンク：ヒント用) */
+.btn-accent {
+  background-color: var(--accent);
+  color: var(--text-dark);
+}
+
+.btn-accent:hover {
+  background-color: var(--accent-hover);
+}
+
+/* クイズ4択ボタン */
+.btn-option {
+  background-color: #FFFFFF;
+  border: 3px solid var(--secondary);
+  color: var(--text-dark);
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 1.05rem;
+  box-shadow: 0 4px 0 var(--secondary);
+  text-align: left;
+  padding-left: 24px;
+  position: relative;
+}
+
+.btn-option:hover {
+  background-color: #FFFDF0;
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--secondary);
+}
+
+.btn-option:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+/* 回答の正解・不正解ボタンスタイル */
+.btn-option.correct {
+  background-color: var(--correct-color) !important;
+  border-color: #83A2B0 !important;
+  color: #FFFFFF !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.btn-option.incorrect {
+  background-color: var(--incorrect-color) !important;
+  border-color: #DDA8A8 !important;
+  color: #FFFFFF !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* 画面切り替え用の非表示クラス */
+.hidden {
+  display: none !important;
+}
+
+/* ボタンを並べるグループ */
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* ================= スタート画面 ================= */
+.welcome-card h2 {
+  font-size: 1.4rem;
+  margin: 16px 0 8px 0;
+  color: var(--text-dark);
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.dog-illustration {
+  font-size: 4rem;
+  animation: bounce 2s infinite ease-in-out;
+}
+
+/* 設定エリアの囲み */
+.settings-box {
+  background: var(--bg-color);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 24px;
+  border: 2px dashed var(--secondary);
+}
+
+.setting-group {
+  margin-bottom: 16px;
+}
+
+.setting-group:last-child {
+  margin-bottom: 0;
+}
+
+.setting-group h3 {
+  font-size: 0.95rem;
+  text-align: left;
+  margin-bottom: 8px;
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+/* ラジオボタンを大きな選択用タイルにするスタイル */
+.radio-tile-group {
+  display: flex;
+  gap: 12px;
+}
+
+.input-container {
+  position: relative;
+  flex: 1;
+}
+
+.input-container input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.radio-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+  border: 3px solid var(--secondary);
+  border-radius: 16px;
+  padding: 12px;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.radio-tile .emoji {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.radio-tile label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+
+/* ラジオボタンがチェックされたときのスタイル */
+.input-container input:checked + .radio-tile {
+  border-color: var(--primary);
+  background-color: #FFFDF0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 184, 76, 0.15);
+}
+
+/* ================= クイズ画面 ================= */
+.quiz-info-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-light);
+}
+
+/* 犬の画像を表示するコンテナ */
+.dog-image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background-color: var(--secondary);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 3px solid var(--secondary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dog-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 0.5s ease;
+}
+
+/* ぼかし（モザイク風）の段階クラス */
+.blur-level-3 {
+  filter: blur(30px) !important;
+}
+
+.blur-level-2 {
+  filter: blur(15px) !important;
+}
+
+.blur-level-1 {
+  filter: blur(6px) !important;
+}
+
+.blur-level-0 {
+  filter: blur(0px) !important;
+}
+
+/* ヒントアクション（おやつをあげる）エリア */
+.hint-action-area {
+  margin-bottom: 20px;
+}
+
+.hint-sub-text {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* クイズ4択グリッド */
+.quiz-options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+/* テキストヒント表示用の吹き出し */
+.hint-message {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  border-top: 2px dashed var(--primary);
+  text-align: center;
+  animation: slideUp 0.3s ease;
+  z-index: 5;
+}
+
+/* ================= 肉球ローディングアニメーション ================= */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.paw-loader {
+  text-align: center;
+}
+
+.paw-icon {
+  font-size: 3rem;
+  animation: pawPulse 1.2s infinite ease-in-out;
+}
+
+.loading-text {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--text-light);
+  font-weight: 700;
+}
+
+/* ================= 図鑑画面 ================= */
+.dictionary-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.dictionary-header h2 {
+  font-size: 1.4rem;
+  margin-bottom: 12px;
+}
+
+.stats-box {
+  background: #FFFFFF;
+  border: 3px solid var(--secondary);
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: inline-block;
+}
+
+#collected-count, #collected-percent {
+  color: var(--primary-hover);
+  font-size: 1.1rem;
+}
+
+/* フィルターボタンエリア */
+.filter-box {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-filter {
+  background: #FFFFFF;
+  border: 2px solid var(--secondary);
+  border-radius: 50px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  box-shadow: none;
+}
+
+.btn-filter.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  font-weight: 700;
+}
+
+/* 図鑑グリッド */
+.dictionary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+  max-height: 50vh;
+  overflow-y: auto; /* スクロール可能にする */
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(245, 237, 206, 0.2);
+  border: 2px solid var(--secondary);
+}
+
+/* 図鑑のカード */
+.dict-card {
+  background: #FFFFFF;
+  border: 3px solid var(--secondary);
+  border-radius: 16px;
+  padding: 12px;
+  text-align: center;
+  position: relative;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 180px;
+}
+
+.dict-card.unlocked-3 {
+  border-color: var(--primary);
+}
+
+.dict-image-box {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--bg-color);
+  border: 2px solid var(--secondary);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dict-image-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* シルエット表示用 */
+.dict-card.silhouette .dict-image-box img {
+  filter: brightness(0); /* 真っ黒にする */
+}
+
+/* 未所持状態のカード */
+.dict-card.locked {
+  opacity: 0.6;
+}
+
+.dict-card.locked .dict-image-box {
+  background-color: #ECEAE6;
+}
+
+.dict-card.locked .dict-image-box img {
+  display: none;
+}
+
+.dict-card.locked .dict-image-box::before {
+  content: '🐾';
+  font-size: 2rem;
+  color: #C1BEBA;
+}
+
+.dict-dog-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* 正解スター（解放度インジケータ：3つの肉球/星） */
+.star-indicator {
+  display: flex;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.star-indicator span {
+  font-size: 0.8rem;
+  color: #C1BEBA; /* グレー */
+}
+
+.star-indicator span.active {
+  color: var(--primary-hover); /* 有効時はオレンジ */
+}
+
+/* 豆知識表示用のオーバーレイ/拡張領域 */
+.dict-details-btn {
+  background: var(--secondary);
+  border: none;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-top: 6px;
+  cursor: pointer;
+  width: 100%;
+  font-weight: 700;
+}
+
+/* 詳細ポップアップ（豆知識） */
+.dict-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(74, 62, 61, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+}
+
+.dict-popup {
+  background: #FFFFFF;
+  border: 4px solid var(--primary);
+  border-radius: 24px;
+  width: 90%;
+  max-width: 400px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+  animation: scaleUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.dict-popup .popup-image {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--secondary);
+  margin-bottom: 12px;
+}
+
+.dict-popup h3 {
+  margin-bottom: 8px;
+}
+
+.dict-popup p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-dark);
+  background: var(--bg-color);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--secondary);
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.footer-action {
+  text-align: center;
+  margin-top: 16px;
+}
+
+/* ================= 結果発表画面 ================= */
+.result-card h2 {
+  font-size: 1.4rem;
+  margin: 12px 0;
+}
+
+.result-emoji {
+  font-size: 4rem;
+}
+
+.result-stats {
+  background: var(--bg-color);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 2px dashed var(--secondary);
+}
+
+.result-score {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--primary-hover);
+  margin-bottom: 8px;
+}
+
+.result-msg {
+  font-size: 0.9rem;
+  color: var(--text-light);
+}
+
+/* 新規解放エリア */
+.new-unlocks {
+  margin-bottom: 20px;
+  text-align: left;
+  border: 2px solid var(--primary);
+  border-radius: 16px;
+  padding: 16px;
+  background: #FFFDF0;
+}
+
+.new-unlocks h3 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: var(--text-dark);
+}
+
+.new-unlocks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.unlock-item {
+  background: #FFFFFF;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+}
+
+.unlock-item span.new-badge {
+  background: var(--accent);
+  color: var(--text-dark);
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ================= アニメーション定義 ================= */
+/* ぷよぷよ跳ねるアニメーション */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+/* ローディング肉球のパルスアニメーション */
+@keyframes pawPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+/* スライドアップ（ヒント表示） */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* フェードイン */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* スケールアップ */
+@keyframes scaleUp {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
