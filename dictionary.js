@@ -239,7 +239,8 @@ const ALL_DOGS_DICTIONARY = {
   "ovcharka-caucasian": "コーカシアン・オーブチャッカ",
   "papillon": "パピヨン",
   "pekinese": "ペキニーズ",
-  "pembroke": "ウェルシュコーギー・ペンブローク",
+  "corgi-pembroke": "ウェルシュコーギー・ペンブローク",
+  "corgi": "ウェルシュ・コーギー",
   "pinscher-miniature": "ミニチュアピンシャー",
   "pitbull": "ピットブル",
   "pointer-german": "ジャーマン・ポインター",
@@ -326,7 +327,9 @@ function getDogData(breedKey) {
     return {
       isPopular: true,
       japanese: POPULAR_DOGS[cleanKey].japanese,
-      description: POPULAR_DOGS[cleanKey].description
+      description: POPULAR_DOGS[cleanKey].description,
+      origin: POPULAR_DOGS[cleanKey].origin,
+      size: POPULAR_DOGS[cleanKey].size
     };
   }
 
@@ -335,7 +338,9 @@ function getDogData(breedKey) {
     return {
       isPopular: false,
       japanese: ALL_DOGS_DICTIONARY[cleanKey],
-      description: "世界中で愛されている犬種です。元気に走り回ることや、人と触れ合うことが大好きな性格をしています。" // 汎用豆知識
+      description: "世界中で愛されている犬種です。元気に走り回ることや、人と触れ合うことが大好きな性格をしています。", // 汎用豆知識
+      origin: "不明",
+      size: "不明"
     };
   }
 
@@ -345,7 +350,9 @@ function getDogData(breedKey) {
     return {
       isPopular: false,
       japanese: ALL_DOGS_DICTIONARY[parentBreed] + ` (${cleanKey.replace(parentBreed + '-', '')})`,
-      description: "世界中で愛されている犬種です。元気に走り回ることや、人と触れ合うことが大好きな性格をしています。"
+      description: "世界中で愛されている犬種です。元気に走り回ることや、人と触れ合うことが大好きな性格をしています。",
+      origin: "不明",
+      size: "不明"
     };
   }
 
@@ -358,7 +365,9 @@ function getDogData(breedKey) {
   return {
     isPopular: false,
     japanese: formattedName,
-    description: "世界中で親しまれている珍しい犬種です。DogAPIに登録されている仲間の一員です。"
+    description: "世界中で親しまれている珍しい犬種です。DogAPIに登録されている仲間の一員です。",
+    origin: "不明",
+    size: "不明"
   };
 }
 

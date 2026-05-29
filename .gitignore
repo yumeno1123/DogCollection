@@ -1,0 +1,7 @@
+# 一時ファイルやライブラリの除外設定
+node_modules/
+playwright-report/
+test-results/
+.system_generated/
+.DS_Store
+Thumbs.db

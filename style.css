@@ -532,6 +532,16 @@ body {
   object-fit: cover;
 }
 
+/* 画像ロード失敗時のプレースホルダー表示 */
+.dict-image-box.error {
+  background-color: #FFF0F0;
+  border-color: var(--incorrect-color);
+}
+.dict-image-box.error::before {
+  content: '⚠️';
+  font-size: 1.8rem;
+}
+
 /* シルエット表示用 */
 .dict-card.silhouette .dict-image-box img {
   filter: brightness(0); /* 真っ黒にする */
@@ -916,6 +926,7 @@ body {
   width: 100%;
   background-color: var(--primary);
   border-radius: 50px;
+  transition: width 0.05s linear;
 }
 
 /* 赤く光る演出（不正解ペナルティ用） */
