@@ -25,13 +25,48 @@ DogAPI（インターネット上の犬のデータを提供する仕組み）�
 | :--- | :--- | :--- | :--- | :--- |
 | [GEMINI.md](file:///c:/Users/Owner/Documents/myproject/DogCollection/GEMINI.md) | `c:/Users/Owner/Documents/myproject/DogCollection/GEMINI.md` | プロジェクト管理・開発状況記録ドキュメント | 2026-05-24 | v1.1.0 |
 | [dictionary.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/dictionary.js) | `c:/Users/Owner/Documents/myproject/DogCollection/dictionary.js` | 犬種名の日本語翻訳と豆知識データベース | 2026-05-24 | v1.0.4 |
-| [index.html](file:///c:/Users/Owner/Documents/myproject/DogCollection/index.html) | `c:/Users/Owner/Documents/myproject/DogCollection/index.html` | アプリ画面レイアウト（スタート、クイズ、図鑑、結果画面） | 2026-05-24 | v1.0.4 |
-| [style.css](file:///c:/Users/Owner/Documents/myproject/DogCollection/style.css) | `c:/Users/Owner/Documents/myproject/DogCollection/style.css` | アプリデザインスタイル（配色、カード、アニメーション、ぼかし） | 2026-05-24 | v1.0.7 |
-| [app.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/app.js) | `c:/Users/Owner/Documents/myproject/DogCollection/app.js` | アプリの動作ロジック（API接続、クイズ制御、図鑑制御,データ保存） | 2026-05-24 | v1.0.9 |
+| [index.html](file:///c:/Users/Owner/Documents/myproject/DogCollection/index.html) | `c:/Users/Owner/Documents/myproject/DogCollection/index.html` | アプリ画面レイアウト（スタート、クイズ、図鑑、結果画面） | 2026-05-24 | v1.2.1 |
+| [style.css](file:///c:/Users/Owner/Documents/myproject/DogCollection/style.css) | `c:/Users/Owner/Documents/myproject/DogCollection/style.css` | アプリデザインスタイル（配色、カード、アニメーション、ぼかし） | 2026-05-24 | v1.2.1 |
+| [app.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/app.js) | `c:/Users/Owner/Documents/myproject/DogCollection/app.js` | アプリの動作ロジック（API接続、クイズ制御、図鑑制御,データ保存） | 2026-05-24 | v1.2.3 |
 
 ---
 ## 4. 変更履歴
 コードやドキュメントの重要な変更履歴を記録します。
+
+### v1.2.3 (2026-05-29)
+- 画像ロード失敗時の自動リトライ＆スキップ（別犬種お題切り替え）機能の実装。
+  - クイズの正確性を保証するため、ロードに失敗した際に別の犬種（ダミー画像）を表示するのではなく、同じ犬種で最大3回の自動リトライを実施するように `loadDogImageWithRetry` を実装（`app.js`）。
+  - リトライがすべて失敗した場合は、そのお題自体を自動でスキップ（4択/2択エンドレスではお題の再生成、2択タイムアタックではお題犬種の再選定と1問目からの再スタート）するエラーハンドリングを構築（`app.js`）。
+  - 画像ロードエラー時に `Promise` を正しく拒否（`reject`）するよう、プリロード用の画像オブジェクトの `onerror` 処理を修正（`app.js`）。
+
+### v1.2.2 (2026-05-29)
+- 画像の事前ロード（プリフェッチ）機能を実装し、読み込みラグを解消。
+  - 次の問題データ（画像・配置・キー）をバックグラウンド（非同期）で読み込んでおくためのキャッシュ変数 `nextQuestionCache` の追加（`app.js`）。
+  - 非同期で次の問題を裏でロードしてプリロードする `prefetchNextQuestion` 関数の追加（`app.js`）。
+  - `startQuizGame` 起動時に1問目を表示し、同時に2問目の先読みを開始する処理を実装（`app.js`）。
+  - `showQuestion2Choices` を、キャッシュが完了していれば瞬時に画像を表示し、表示開始直後にさらに次の問題を先読みするよう修正。ラグなしでの瞬時切り替えを実現（`app.js`）。
+
+### v1.2.1 (2026-05-29)
+- 2択タイムアタックモードのルール変更・バグ修正。
+  - 問題数を **30問から10問に変更**（`index.html`, `app.js`）。
+  - クイズ中、お題（正解の犬種）を **ゲーム開始時の1種類に固定** し、特定の犬種の見分けトレーニングを行えるよう修正（`app.js`）。
+  - 問題切り替え時にタイムアタック用のタイマーが消えてしまう不具合を修正。タイマークリアをエンドレス用のみ（`clearEndlessTimer`）に制限（`app.js`）。
+  - 画像選択時、選んだ画像の上に大きく「⭕」または「❌」のスタンプ風マークがふわっと浮かび上がるアニメーションフィードバックを追加（`index.html`, `style.css`, `app.js`）。
+
+### v1.2.0 (2026-05-29)
+- 新ゲームモード「2択画像選択ゲーム」を実装。
+  - **30問タイムアタックモード**:
+    - 全30問のお題（日本語犬種名）に対して、2枚の犬の画像から正しい方を選択するゲーム。
+    - 30問解き終わるまでのタイムを計測。不正解時はペナルティとしてタイムに「+3秒」が加算。
+    - 自己ベストタイムをローカルストレージに保存する機能を実装。
+  - **制限時間付きエンドレスモード**:
+    - 1問3秒のカウントダウンタイマーを搭載し、制限時間内に正解し続けるモード。
+    - 不正解または3秒の時間切れで即ゲームオーバー。
+    - 連続正解数（ハイスコア）をローカルストレージに保存する機能を実装。
+- `index.html` および `style.css` の更新:
+  - スタート画面に新モードの選択ボタン（タイムアタック・エンドレス）を追加。
+  - 2択ゲーム専用の画像表示・選択レイアウトおよびカウントダウンゲージの追加。
+  - 結果画面にタイムアタック（タイム・ペナルティ・誤答数）およびエンドレス（正解数・ベストバッジ）の専用結果ボックスを追加。
 
 ### v1.1.0 (2026-05-24)
 - 難易度「かんたん（ぼかし無し）」モードでの獲得スコアを一律4点に変更（`app.js`）。

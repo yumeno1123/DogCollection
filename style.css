@@ -780,3 +780,220 @@ body {
   margin-top: 16px;
 }
 
+/* ================= 2択ゲーム用の追加スタイル ================= */
+
+/* 特別のボタンデザイン（タイムアタック・エンドレス） */
+.btn-timeattack {
+  background-color: var(--correct-color);
+  color: #FFFFFF;
+}
+.btn-timeattack:hover {
+  background-color: #83A2B0;
+}
+.btn-endless {
+  background-color: var(--accent);
+  color: var(--text-dark);
+}
+.btn-endless:hover {
+  background-color: var(--accent-hover);
+}
+
+/* 2択画像選択エリア */
+.two-choices-area {
+  padding: 10px 0;
+}
+
+.two-choices-title-box {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text-dark);
+}
+
+.two-choices-dog-name {
+  color: var(--primary-hover);
+  border-bottom: 3px dashed var(--primary);
+  padding-bottom: 2px;
+}
+
+.two-choices-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.btn-choice {
+  background: #FFFFFF;
+  border: 4px solid var(--secondary);
+  border-radius: 24px;
+  padding: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: var(--shadow);
+  width: 100%;
+  outline: none;
+}
+
+.btn-choice:hover {
+  border-color: var(--primary);
+  transform: translateY(-4px);
+}
+
+.btn-choice:active {
+  transform: translateY(2px);
+}
+
+.choice-image-box {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  border: 2px solid var(--secondary);
+  margin-bottom: 8px;
+  background-color: var(--bg-color);
+}
+
+.choice-image-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.choice-label {
+  background: var(--secondary);
+  color: var(--text-dark);
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 4px 20px;
+  border-radius: 50px;
+  transition: var(--transition);
+}
+
+.btn-choice:hover .choice-label {
+  background: var(--primary);
+}
+
+/* 2択の正誤結果スタイル */
+.btn-choice.correct {
+  border-color: var(--correct-color) !important;
+  background-color: #F0F7F7 !important;
+  box-shadow: 0 0 12px rgba(160, 195, 210, 0.4) !important;
+}
+
+.btn-choice.correct .choice-label {
+  background-color: var(--correct-color) !important;
+  color: #FFFFFF !important;
+}
+
+.btn-choice.incorrect {
+  border-color: var(--incorrect-color) !important;
+  background-color: #FFF0F0 !important;
+  box-shadow: 0 0 12px rgba(247, 164, 164, 0.4) !important;
+}
+
+.btn-choice.incorrect .choice-label {
+  background-color: var(--incorrect-color) !important;
+  color: #FFFFFF !important;
+}
+
+/* エンドレスモード用のカウントダウンタイマーバー */
+.timer-bar-container {
+  width: 100%;
+  height: 14px;
+  background-color: var(--secondary);
+  border-radius: 50px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 2px solid var(--secondary);
+}
+
+.timer-bar {
+  height: 100%;
+  width: 100%;
+  background-color: var(--primary);
+  border-radius: 50px;
+}
+
+/* 赤く光る演出（不正解ペナルティ用） */
+.penalty-flash {
+  animation: redFlash 0.5s ease-in-out;
+}
+
+@keyframes redFlash {
+  0%, 100% {
+    box-shadow: var(--shadow);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(247, 164, 164, 0.8);
+    border-color: var(--incorrect-color);
+  }
+}
+
+/* タイムアタック時のタイマー表示テキスト */
+#quiz-timer-text {
+  color: #D3756B;
+  font-weight: 700;
+}
+
+/* 自己ベスト更新バッジ */
+.highscore-badge {
+  background-color: #FFE699;
+  border: 2px solid var(--primary);
+  color: var(--text-dark);
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-weight: 700;
+  display: inline-block;
+  margin-top: 10px;
+  animation: bounce 1.5s infinite ease-in-out;
+}
+
+.result-sub-score {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+
+/* 〇×フィードバックマークのスタイル */
+.choice-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  font-size: 6rem;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  user-select: none;
+}
+
+.choice-feedback.show {
+  animation: feedbackStamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes feedbackStamp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.5);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+
