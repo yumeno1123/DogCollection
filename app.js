@@ -4,9 +4,12 @@
  * 
  * 概要：
  * アプリケーションの起動と、ボタンなどの操作（イベントリスナー）
- * の設定のみを行うエントリーポイントファイルです。
- * 状態管理やゲームロジックは別のファイルに分割されています。
+ * の設定のみを行うエントリーポイントモジュールです。
  */
+
+import { loadSaveData, gameState } from './state.js';
+import { el, switchScreen, renderDictionary, filterDictionary } from './ui.js';
+import { startQuizGame, quitQuiz, useHint } from './game.js';
 
 // ================= アプリの初期起動処理 ================= //
 
@@ -17,47 +20,47 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // イベントリスナーの設定
 function setupEventListeners() {
-  // 画面遷移：スタート画面 -> クイズ画面（各ゲームモードに対応） (game.js)
-  elBtnStart.addEventListener('click', () => startQuizGame('4choices'));
-  elBtnStartTimeAttack.addEventListener('click', () => {
-    targetBreedKeyFromDict = null; // 通常の開始時は指定を解除
+  // 画面遷移：スタート画面 -> クイズ画面（各ゲームモードに対応）
+  el.elBtnStart.addEventListener('click', () => startQuizGame('4choices'));
+  el.elBtnStartTimeAttack.addEventListener('click', () => {
+    gameState.targetBreedKeyFromDict = null; // 通常の開始時は指定を解除
     startQuizGame('timeattack');
   });
-  elBtnStartEndless.addEventListener('click', () => startQuizGame('endless'));
+  el.elBtnStartEndless.addEventListener('click', () => startQuizGame('endless'));
 
-  // 画面遷移：クイズ画面 -> スタート画面（クイズを中断） (game.js)
-  elBtnQuit.addEventListener('click', quitQuiz);
+  // 画面遷移：クイズ画面 -> スタート画面（クイズを中断）
+  el.elBtnQuit.addEventListener('click', quitQuiz);
 
   // 画面遷移：スタート画面 -> 図鑑画面
-  elBtnViewDict.addEventListener('click', () => {
-    switchScreen('dictionary-screen'); // ui.js
-    renderDictionary(); // game.js
+  el.elBtnViewDict.addEventListener('click', () => {
+    switchScreen('dictionary-screen');
+    renderDictionary();
   });
 
   // 画面遷移：図鑑画面 -> スタート画面
-  elBtnBackToMenu.addEventListener('click', () => {
-    switchScreen('start-screen'); // ui.js
+  el.elBtnBackToMenu.addEventListener('click', () => {
+    switchScreen('start-screen');
   });
 
   // 画面遷移：結果画面 -> クイズ画面（もういちど遊ぶ）
-  elBtnRestart.addEventListener('click', () => startQuizGame(activeGameType));
+  el.elBtnRestart.addEventListener('click', () => startQuizGame(gameState.activeGameType));
 
   // 画面遷移：結果画面 -> 図鑑画面
-  elBtnGoToDict.addEventListener('click', () => {
-    switchScreen('dictionary-screen'); // ui.js
-    renderDictionary(); // game.js
+  el.elBtnGoToDict.addEventListener('click', () => {
+    switchScreen('dictionary-screen');
+    renderDictionary();
   });
 
   // 画面遷移：結果画面 -> スタート画面
-  elBtnResultBackToMenu.addEventListener('click', () => {
-    switchScreen('start-screen'); // ui.js
+  el.elBtnResultBackToMenu.addEventListener('click', () => {
+    switchScreen('start-screen');
   });
 
   // ヒントボタン
-  elBtnHint.addEventListener('click', useHint); // game.js
+  el.elBtnHint.addEventListener('click', useHint);
 
   // 図鑑のフィルターボタン
-  elBtnFilterAll.addEventListener('click', () => filterDictionary('all')); // game.js
-  elBtnFilterCollected.addEventListener('click', () => filterDictionary('collected'));
-  elBtnFilterUncollected.addEventListener('click', () => filterDictionary('uncollected'));
+  el.elBtnFilterAll.addEventListener('click', () => filterDictionary('all'));
+  el.elBtnFilterCollected.addEventListener('click', () => filterDictionary('collected'));
+  el.elBtnFilterUncollected.addEventListener('click', () => filterDictionary('uncollected'));
 }

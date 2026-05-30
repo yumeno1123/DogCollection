@@ -8,7 +8,7 @@
  */
 
 // 主要な犬種（おなじみモードの出題対象となり、詳細な豆知識を持つ犬種）のデータ
-const POPULAR_DOGS = {
+export const POPULAR_DOGS = {
   "shiba": {
     japanese: "柴犬",
     origin: "日本",
@@ -163,7 +163,7 @@ const POPULAR_DOGS = {
 
 // 辞書にない犬種の英語キーを日本語（カタカナなど）に変換するための一般辞書
 // DogAPIから取得できる一般的な犬種名を網羅しています。
-const ALL_DOGS_DICTIONARY = {
+export const ALL_DOGS_DICTIONARY = {
   // あ行
   "affenpinscher": "アーフェンピンシャー",
   "african": "アフリカカンヒューノ",
@@ -318,7 +318,7 @@ const ALL_DOGS_DICTIONARY = {
  * 本アプリ内で統一的に使用する翻訳キー名（例: "poodle-toy", "retriever-golden"）に変換し、
  * 日本語名と豆知識データを取得するための関数です。
  */
-function getDogData(breedKey) {
+export function getDogData(breedKey) {
   // スラッシュをハイフンに統一（APIは "poodle/toy"、辞書は "poodle-toy" で管理するため）
   const cleanKey = breedKey.replace('/', '-').toLowerCase();
 
@@ -372,7 +372,7 @@ function getDogData(breedKey) {
 }
 
 // 見た目が似ている犬種のグループリスト（難易度「むずかしい」の時、不正解の選択肢に優先して選ばれます）
-const SIMILAR_DOG_GROUPS = [
+export const SIMILAR_DOG_GROUPS = [
   // 日本犬・立ち耳・スピッツ系
   ["shiba", "akita", "spitz-japanese", "samoyed", "husky-siberian"],
   // レトリバー系
@@ -393,7 +393,4 @@ const SIMILAR_DOG_GROUPS = [
   ["beagle", "basset", "coonhound", "spaniel-cocker", "dalmatian"]
 ];
 
-// ブラウザ（HTML）側から呼び出せるようにモジュールまたはグローバル変数として公開する
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { POPULAR_DOGS, ALL_DOGS_DICTIONARY, getDogData, SIMILAR_DOG_GROUPS };
-}
+

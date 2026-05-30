@@ -3,28 +3,37 @@
  * 【game.js】
  * 
  * 概要：
- * クイズ進行ロジック、得点計算、ヒント機能、図鑑の表示処理など、
- * アプリケーションの主要なゲームシステム・機能を制御するファイルです。
+ * クイズのルール進行、回答判定、スコア計算、ヒント管理などの
+ * 純粋なゲーム進行ロジックを管理するモジュールファイルです。
  */
+
+import { gameState, saveGameData } from './state.js';
+import { getDogData, POPULAR_DOGS, ALL_DOGS_DICTIONARY, SIMILAR_DOG_GROUPS } from './dictionary.js';
+import { loadDogImageWithRetry, fetchDogImage } from './api.js';
+import { el, switchScreen, showLoading, showPrepScreen, renderNewUnlocksList } from './ui.js';
 
 // ================= タイマー管理 ================= //
 
-// すべてのタイマーを停止する関数
-function clearAllTimers() {
-  if (timeAttackTimerInterval) {
-    clearInterval(timeAttackTimerInterval);
-    timeAttackTimerInterval = null;
+/**
+ * すべてのタイマーを停止します。
+ */
+export function clearAllTimers() {
+  if (gameState.timeAttackTimerInterval) {
+    clearInterval(gameState.timeAttackTimerInterval);
+    gameState.timeAttackTimerInterval = null;
   }
-  if (endlessTimerInterval) {
-    clearInterval(endlessTimerInterval);
-    endlessTimerInterval = null;
+  if (gameState.endlessTimerInterval) {
+    clearInterval(gameState.endlessTimerInterval);
+    gameState.endlessTimerInterval = null;
   }
 }
 
 // ================= クイズゲームの中断処理 ================= //
 
-// クイズを途中で終了する処理
-function quitQuiz() {
+/**
+ * クイズを途中で終了し、スタート画面に戻ります。
+ */
+export function quitQuiz() {
   const confirmQuit = confirm("ゲームを途中でやめますか？\n（ここまでのスコアや記録は保存されません）");
   if (confirmQuit) {
     clearAllTimers(); // タイマーを確実に止める
@@ -34,20 +43,20 @@ function quitQuiz() {
 
 // ================= クイズゲームの開始処理 ================= //
 
-// 不正解の選択肢候補を難易度を考慮して取得する関数
+/**
+ * 不正解の選択肢候補を難易度を考慮して取得します。
+ */
 function getIncorrectChoices(correctKey, count) {
   let allCandidates = [];
-  if (quizMode === 'popular') {
+  if (gameState.quizMode === 'popular') {
     allCandidates = Object.keys(POPULAR_DOGS);
   } else {
     allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
   }
 
-  // 自分自身を除外
   let candidates = allCandidates.filter(key => key !== correctKey);
 
-  // 難易度が「むずかしい」の場合は、類似犬種を優先的に選ぶ
-  if (difficulty === 'hard') {
+  if (gameState.difficulty === 'hard') {
     let similarBreeds = [];
     SIMILAR_DOG_GROUPS.forEach(group => {
       if (group.includes(correctKey)) {
@@ -74,10 +83,12 @@ function getIncorrectChoices(correctKey, count) {
   return candidates.slice(0, count);
 }
 
-// 他のクイズで使われていない代替犬種を取得する
+/**
+ * 他のクイズで使われていない代替犬種を取得します。
+ */
 function getAlternativeBreed(excludeList) {
   let allCandidates = [];
-  if (quizMode === 'popular') {
+  if (gameState.quizMode === 'popular') {
     allCandidates = Object.keys(POPULAR_DOGS);
   } else {
     allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
@@ -87,7 +98,9 @@ function getAlternativeBreed(excludeList) {
   return available.length > 0 ? available[0] : allCandidates[0];
 }
 
-// 4択クイズの選択肢生成（プリロード用）
+/**
+ * 4択クイズの選択肢生成（プリロード用）
+ */
 function setupChoicesForPreload(correctKey) {
   const incorrectChoices = getIncorrectChoices(correctKey, 3);
   const choices = [correctKey, ...incorrectChoices];
@@ -95,18 +108,19 @@ function setupChoicesForPreload(correctKey) {
   return choices;
 }
 
-// クイズの画像とデータを一括してプリロードする関数
+/**
+ * クイズの画像とデータを一括してプリロードします。
+ */
 async function preloadQuizData(gameType, count, onProgress) {
-  preloadedQuestions = [];
+  gameState.preloadedQuestions = [];
   let loadedCount = 0;
   const totalCount = gameType === 'endless' ? 20 : count; // エンドレスは初期20問分
 
-  // 1. 各問のデータを決定する
   const prepList = [];
   
   if (gameType === '4choices') {
     for (let i = 0; i < count; i++) {
-      const correctKey = currentQuizList[i];
+      const correctKey = gameState.currentQuizList[i];
       const choices = setupChoicesForPreload(correctKey);
       prepList.push({
         correctKey,
@@ -116,7 +130,7 @@ async function preloadQuizData(gameType, count, onProgress) {
   } else {
     // 2択ゲーム
     for (let i = 0; i < totalCount; i++) {
-      const correctKey = currentQuizList[i];
+      const correctKey = gameState.currentQuizList[i];
       const wrongKey = getIncorrectChoices(correctKey, 1)[0];
       const isLeftCorrect = Math.random() < 0.5;
       prepList.push({
@@ -127,7 +141,6 @@ async function preloadQuizData(gameType, count, onProgress) {
     }
   }
 
-  // 2. 画像のロード処理を非同期並列で実行
   const promises = prepList.map(async (item, index) => {
     try {
       if (gameType === '4choices') {
@@ -150,20 +163,17 @@ async function preloadQuizData(gameType, count, onProgress) {
       console.warn(`プリロード失敗。別の画像でリトライまたは差し替えます:`, err);
       let success = false;
       
-      // 失敗した場合は、別の画像や別犬種でロードを試みる
       for (let retry = 0; retry < 5; retry++) {
         try {
           if (gameType === '4choices') {
-            const newBreed = getAlternativeBreed(currentQuizList);
+            const newBreed = getAlternativeBreed(gameState.currentQuizList);
             const imageUrl = await loadDogImageWithRetry(newBreed);
             item.correctKey = newBreed;
             item.choices = setupChoicesForPreload(newBreed);
             item.imageUrl = imageUrl;
-            // リストの該当キーも更新しておく
-            currentQuizList[index] = newBreed;
+            gameState.currentQuizList[index] = newBreed;
           } else {
-            if (activeGameType === 'timeattack') {
-              // タイムアタックはターゲット犬種が固定。ハズレの犬種を変更してロードを試みる
+            if (gameState.activeGameType === 'timeattack') {
               const newWrong = getIncorrectChoices(item.correctKey, 1)[0];
               item.wrongKey = newWrong;
               const [urlLeft, urlRight] = await Promise.all([
@@ -173,8 +183,7 @@ async function preloadQuizData(gameType, count, onProgress) {
               item.urlLeft = urlLeft;
               item.urlRight = urlRight;
             } else {
-              // エンドレスの場合は問題ごと差し替えてOK
-              const newBreed = getAlternativeBreed(currentQuizList);
+              const newBreed = getAlternativeBreed(gameState.currentQuizList);
               const newWrong = getIncorrectChoices(newBreed, 1)[0];
               item.correctKey = newBreed;
               item.wrongKey = newWrong;
@@ -184,7 +193,7 @@ async function preloadQuizData(gameType, count, onProgress) {
               ]);
               item.urlLeft = urlLeft;
               item.urlRight = urlRight;
-              currentQuizList[index] = newBreed;
+              gameState.currentQuizList[index] = newBreed;
             }
           }
           success = true;
@@ -206,181 +215,162 @@ async function preloadQuizData(gameType, count, onProgress) {
     }
   });
 
-  preloadedQuestions = await Promise.all(promises);
+  gameState.preloadedQuestions = await Promise.all(promises);
 }
 
-// クイズゲームを開始する
-async function startQuizGame(gameType, targetBreedKey = null) {
-  activeGameType = gameType || '4choices';
+/**
+ * クイズゲームを開始します。
+ */
+export async function startQuizGame(gameType, targetBreedKey = null) {
+  gameState.activeGameType = gameType || '4choices';
 
-  // 1. 設定値（出題モード・難易度）をラジオボタンから取得
   const selectedMode = document.querySelector('input[name="出題モード"]:checked').value;
   const selectedDiff = document.querySelector('input[name="難易度"]:checked').value;
 
-  quizMode = selectedMode;
-  difficulty = selectedDiff;
+  gameState.quizMode = selectedMode;
+  gameState.difficulty = selectedDiff;
 
-  // タイマーを確実にリセットする
   clearAllTimers();
 
-  // 進行状況の初期化
-  currentQuestionIndex = 0;
-  currentScore = 0;
-  currentPoints = 0;
-  newlyUnlockedDogs = []; // 新規解放リストの初期化
+  gameState.currentQuestionIndex = 0;
+  gameState.currentScore = 0;
+  gameState.currentPoints = 0;
+  gameState.newlyUnlockedDogs = [];
 
-  timeAttackElapsedTime = 0;
-  timeAttackPenaltySeconds = 0;
-  timeAttackWrongCount = 0;
-  endlessScore = 0;
+  gameState.timeAttackElapsedTime = 0;
+  gameState.timeAttackPenaltySeconds = 0;
+  gameState.timeAttackWrongCount = 0;
+  gameState.endlessScore = 0;
+  gameState.preloadedQuestions = [];
 
-  // キャッシュの初期化
-  nextQuestionCache.loaded = false;
-  preloadedQuestions = [];
-
-  // 2. 出題リストの作成
-  if (activeGameType === '4choices') {
+  if (gameState.activeGameType === '4choices') {
     generateQuizList(10);
-  } else if (activeGameType === 'timeattack') {
-    // 引数で犬種指定があるか、もしくは図鑑からの指定があるか確認
-    const finalTargetBreed = targetBreedKey || targetBreedKeyFromDict;
+  } else if (gameState.activeGameType === 'timeattack') {
+    const finalTargetBreed = targetBreedKey || gameState.targetBreedKeyFromDict;
     if (finalTargetBreed) {
-      currentQuizList = Array(10).fill(finalTargetBreed);
+      gameState.currentQuizList = Array(10).fill(finalTargetBreed);
     } else {
-      generateQuizList(10, true); // ランダムに1種選定
+      generateQuizList(10, true);
     }
   } else {
-    // エンドレス
     generateQuizList(100);
   }
 
-  // 3. UIの準備画面のセットアップ
   switchScreen('quiz-screen');
   showPrepScreen(true);
 
-  // ターゲット予告表示の切り替え
-  if (activeGameType === 'timeattack') {
-    elPrepTargetBox.classList.remove('hidden');
-    elPrepGeneralBox.classList.add('hidden');
+  if (gameState.activeGameType === 'timeattack') {
+    el.elPrepTargetBox.classList.remove('hidden');
+    el.elPrepGeneralBox.classList.add('hidden');
     
-    const targetBreed = currentQuizList[0];
+    const targetBreed = gameState.currentQuizList[0];
     const targetData = getDogData(targetBreed);
-    elPrepTargetDogName.textContent = targetData.japanese;
-    elPrepTargetLoading.classList.remove('hidden');
-    elPrepTargetImage.src = "";
+    el.elPrepTargetDogName.textContent = targetData.japanese;
+    el.elPrepTargetLoading.classList.remove('hidden');
+    el.elPrepTargetImage.src = "";
     
-    // ターゲットの画像をAPIから取得して見本として表示
     try {
       const sampleUrl = await fetchDogImage(targetBreed);
-      elPrepTargetImage.src = sampleUrl;
+      el.elPrepTargetImage.src = sampleUrl;
     } catch (err) {
       console.error("見本画像の取得に失敗しました:", err);
-      // 代替画像
-      elPrepTargetImage.src = "https://images.dog.ceo/breeds/beagle/n02088024_2111.jpg";
+      el.elPrepTargetImage.src = "https://images.dog.ceo/breeds/beagle/n02088024_2111.jpg";
     } finally {
-      elPrepTargetLoading.classList.add('hidden');
+      el.elPrepTargetLoading.classList.add('hidden');
     }
   } else {
-    elPrepTargetBox.classList.add('hidden');
-    elPrepGeneralBox.classList.remove('hidden');
+    el.elPrepTargetBox.classList.add('hidden');
+    el.elPrepGeneralBox.classList.remove('hidden');
   }
 
-  // プログレスバーの初期化
-  elPrepProgressBar.style.width = '0%';
-  elPrepStatusText.textContent = "画像準備中 (0%) ... 🐾";
+  el.elPrepProgressBar.style.width = '0%';
+  el.elPrepStatusText.textContent = "画像準備中 (0%) ... 🐾";
 
-  // 4. 画像のプリロード（最低3秒間待機）
   const sleepPromise = new Promise(resolve => setTimeout(resolve, 3000));
   const updateProgress = (loaded, total) => {
     const percent = Math.round((loaded / total) * 100);
-    elPrepProgressBar.style.width = `${percent}%`;
-    elPrepStatusText.textContent = `画像を準備しています... (${percent}%) 🐾`;
+    el.elPrepProgressBar.style.width = `${percent}%`;
+    el.elPrepStatusText.textContent = `画像を準備しています... (${percent}%) 🐾`;
   };
 
   try {
-    const totalToLoad = activeGameType === 'endless' ? 20 : 10;
+    const totalToLoad = gameState.activeGameType === 'endless' ? 20 : 10;
     await Promise.all([
-      preloadQuizData(activeGameType, totalToLoad, updateProgress),
+      preloadQuizData(gameState.activeGameType, totalToLoad, updateProgress),
       sleepPromise
     ]);
   } catch (err) {
     console.error("プリロード処理で重大なエラーが発生しました:", err);
   }
 
-  // 5. カウントダウン演出
-  elPrepCountdown.classList.remove('hidden');
-  elPrepProgressBar.parentElement.classList.add('hidden');
-  elPrepStatusText.classList.add('hidden');
+  el.elPrepCountdown.classList.remove('hidden');
+  el.elPrepProgressBar.parentElement.classList.add('hidden');
+  el.elPrepStatusText.classList.add('hidden');
 
   for (let sec = 3; sec > 0; sec--) {
-    elPrepCountdown.textContent = sec;
+    el.elPrepCountdown.textContent = sec;
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  elPrepCountdown.textContent = "スタート！🐾";
+  el.elPrepCountdown.textContent = "スタート！🐾";
   await new Promise(resolve => setTimeout(resolve, 800));
 
-  elPrepCountdown.classList.add('hidden');
-  elPrepProgressBar.parentElement.classList.remove('hidden');
-  elPrepStatusText.classList.remove('hidden');
+  el.elPrepCountdown.classList.add('hidden');
+  el.elPrepProgressBar.parentElement.classList.remove('hidden');
+  el.elPrepStatusText.classList.remove('hidden');
 
-  // 準備画面を隠してゲーム本編を表示
   showPrepScreen(false);
 
-  // 6. ゲームモードに応じたUI切り替えと開始
-  if (activeGameType === '4choices') {
-    elFourChoicesImageArea.classList.remove('hidden');
-    elFourChoicesOptionsArea.classList.remove('hidden');
-    elTwoChoicesArea.classList.add('hidden');
-    elQuizTimer.classList.add('hidden');
-    elTimerBarContainer.classList.add('hidden');
-    elQuizScore.classList.remove('hidden');
+  if (gameState.activeGameType === '4choices') {
+    el.elFourChoicesImageArea.classList.remove('hidden');
+    el.elFourChoicesOptionsArea.classList.remove('hidden');
+    el.elTwoChoicesArea.classList.add('hidden');
+    el.elQuizTimer.classList.add('hidden');
+    el.elTimerBarContainer.classList.add('hidden');
+    el.elQuizScore.classList.remove('hidden');
 
     showQuestion();
   } else {
-    elFourChoicesImageArea.classList.add('hidden');
-    elFourChoicesOptionsArea.classList.add('hidden');
-    elHintActionArea.classList.add('hidden');
-    elTwoChoicesArea.classList.remove('hidden');
-    elQuizScore.classList.add('hidden');
+    el.elFourChoicesImageArea.classList.add('hidden');
+    el.elFourChoicesOptionsArea.classList.add('hidden');
+    el.elHintActionArea.classList.add('hidden');
+    el.elTwoChoicesArea.classList.remove('hidden');
+    el.elQuizScore.classList.add('hidden');
 
-    if (activeGameType === 'timeattack') {
-      elQuizTimer.classList.remove('hidden');
-      elTimerBarContainer.classList.add('hidden');
-      elQuizTimer.textContent = "タイム: 0.00 秒";
+    if (gameState.activeGameType === 'timeattack') {
+      el.elQuizTimer.classList.remove('hidden');
+      el.elTimerBarContainer.classList.add('hidden');
+      el.elQuizTimer.textContent = "タイム: 0.00 秒";
 
-      // タイムアタック開始（50ミリ秒ごとに経過時間を画面更新）
-      timeAttackStartTime = Date.now();
-      timeAttackTimerInterval = setInterval(() => {
-        timeAttackElapsedTime = (Date.now() - timeAttackStartTime) / 1000;
-        const totalDisplayTime = timeAttackElapsedTime + timeAttackPenaltySeconds;
-        elQuizTimer.textContent = `タイム: ${totalDisplayTime.toFixed(2)} 秒`;
+      gameState.timeAttackStartTime = Date.now();
+      gameState.timeAttackTimerInterval = setInterval(() => {
+        gameState.timeAttackElapsedTime = (Date.now() - gameState.timeAttackStartTime) / 1000;
+        const totalDisplayTime = gameState.timeAttackElapsedTime + gameState.timeAttackPenaltySeconds;
+        el.elQuizTimer.textContent = `タイム: ${totalDisplayTime.toFixed(2)} 秒`;
       }, 50);
 
       showQuestion2Choices();
     } else {
-      // エンドレス
-      elQuizTimer.classList.add('hidden');
-      elTimerBarContainer.classList.remove('hidden');
+      el.elQuizTimer.classList.add('hidden');
+      el.elTimerBarContainer.classList.remove('hidden');
 
       showQuestion2Choices();
     }
   }
 }
 
-// 出題リストを作成する
+/**
+ * 出題リストを作成します。
+ */
 function generateQuizList(count, singleBreed = false) {
-  // 今回のモードで出題可能な全犬種キーのリストを取得
   let candidates = [];
-  if (quizMode === 'popular') {
+  if (gameState.quizMode === 'popular') {
     candidates = Object.keys(POPULAR_DOGS);
   } else {
     candidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
   }
 
-  // 1種類のお題（犬種）に固定する場合（タイムアタック用）
   if (singleBreed) {
-    // まだ図鑑で解放されていない犬種を優先して1つ選ぶ
-    const uncompleted = candidates.filter(dogKey => (saveData[dogKey] || 0) < 3);
+    const uncompleted = candidates.filter(dogKey => (gameState.saveData[dogKey] || 0) < 3);
     let targetBreed = "";
     if (uncompleted.length > 0) {
       shuffleArray(uncompleted);
@@ -389,41 +379,34 @@ function generateQuizList(count, singleBreed = false) {
       shuffleArray(candidates);
       targetBreed = candidates[0];
     }
-    // 指定された件数すべて同じ犬種で出題リストを埋める
-    currentQuizList = Array(count).fill(targetBreed);
+    gameState.currentQuizList = Array(count).fill(targetBreed);
     return;
   }
 
-  // プレイヤーがまだ図鑑で解放完了していない（正解数3未満）犬種を優先リストとして抽出
   const uncompleted = candidates.filter(dogKey => {
-    const currentWins = saveData[dogKey] || 0;
+    const currentWins = gameState.saveData[dogKey] || 0;
     return currentWins < 3;
   });
 
-  // リストのシャッフル
   shuffleArray(uncompleted);
   shuffleArray(candidates);
 
-  // 指定された件数の出題リストを決定する
   let selectedList = [];
-
-  // まず未解放の犬種を入れられるだけ入れる
   selectedList = uncompleted.slice(0, count);
 
-  // 件数に満たない場合は、すでに解放済みの犬種をランダムに足す
   if (selectedList.length < count) {
     const completedCandidates = candidates.filter(dogKey => !selectedList.includes(dogKey));
     const extraDogs = completedCandidates.slice(0, count - selectedList.length);
     selectedList = selectedList.concat(extraDogs);
   }
 
-  // 最終的な順序をランダムにシャッフルする
   shuffleArray(selectedList);
-
-  currentQuizList = selectedList;
+  gameState.currentQuizList = selectedList;
 }
 
-// 配列をランダムに並び替える関数
+/**
+ * 配列をランダムに並び替えます。
+ */
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -433,149 +416,115 @@ function shuffleArray(array) {
 
 // ================= 4択クイズの出題・回答処理 ================= //
 
-// 問題を1問表示する
+/**
+ * 問題を1問表示します。
+ */
 async function showQuestion() {
-  hintCount = 0; // ヒントカウントのリセット
-  elTextHintBox.classList.add('hidden'); // テキストヒントを隠す
+  gameState.hintCount = 0;
+  el.elTextHintBox.classList.add('hidden');
   
-  // 4択ボタンのスタイル初期化と無効化解除
-  elOptions.forEach(opt => {
+  el.elOptions.forEach(opt => {
     opt.classList.remove('correct', 'incorrect');
     opt.disabled = false;
-    opt.style.visibility = 'visible'; // 非表示になっていた選択肢を戻す
+    opt.style.visibility = 'visible';
   });
 
-  // 進行状況テキストの更新
-  elQuizProgress.textContent = `第 ${currentQuestionIndex + 1} 問 / 10問中`;
-  elQuizScore.textContent = `スコア：${currentPoints} 点 / せいかい：${currentScore}問`;
+  el.elQuizProgress.textContent = `第 ${gameState.currentQuestionIndex + 1} 問 / 10問中`;
+  el.elQuizScore.textContent = `スコア：${gameState.currentPoints} 点 / せいかい：${gameState.currentScore}問`;
 
-  // プリロードされたデータを取得
-  const qData = preloadedQuestions[currentQuestionIndex];
+  const qData = gameState.preloadedQuestions[gameState.currentQuestionIndex];
   const dogKey = qData.correctKey;
-  currentQuestionDog = getDogData(dogKey);
-  currentQuestionDog.key = dogKey;
+  gameState.currentQuestionDog = getDogData(dogKey);
+  gameState.currentQuestionDog.key = dogKey;
 
-  // 難易度に関わらず、ぼかしは常に無し（blur-level-0）
-  elQuizDogImg.className = '';
-  elQuizDogImg.classList.add('blur-level-0');
+  el.elQuizDogImg.className = '';
+  el.elQuizDogImg.classList.add('blur-level-0');
 
-  if (difficulty === 'hard') {
-    elHintActionArea.classList.remove('hidden'); // むずかしいモードではヒントを表示する
-    elBtnHint.disabled = false;
-    elBtnHint.innerHTML = '<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り4回)';
-    elHintStatus.textContent = "※おやつをあげると選択肢が減ったり頭文字がわかるよ";
+  if (gameState.difficulty === 'hard') {
+    el.elHintActionArea.classList.remove('hidden');
+    el.elBtnHint.disabled = false;
+    el.elBtnHint.innerHTML = '<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り4回)';
+    el.elHintStatus.textContent = "※おやつをあげると選択肢が減ったり頭文字がわかるよ";
   } else {
-    elHintActionArea.classList.add('hidden');    // かんたんモードではヒントを表示しない
-    elBtnHint.disabled = true;
-    elHintStatus.textContent = "";
+    el.elHintActionArea.classList.add('hidden');
+    el.elBtnHint.disabled = true;
+    el.elHintStatus.textContent = "";
   }
 
-  // キャッシュ済みの画像URLを設定
-  currentDogImageUrl = qData.imageUrl;
-  elQuizDogImg.src = currentDogImageUrl;
+  gameState.currentDogImageUrl = qData.imageUrl;
+  el.elQuizDogImg.src = gameState.currentDogImageUrl;
 
-  // 選択肢を設定する
   setupQuizOptionsFromPreload(qData.choices);
 }
 
-// DogAPIからランダム画像URLを取得する
-async function fetchDogImage(cleanKey) {
-  // DogAPI側のキー名とのズレを調整
-  let apiBreed = cleanKey;
-  if (cleanKey === 'husky-siberian') {
-    apiBreed = 'husky'; // DogAPIではシベリアンハスキーは単に 'husky' として管理されているため
-  } else {
-    // API用のブリード名に変換 (例: "poodle-toy" -> "poodle/toy")
-    apiBreed = cleanKey.replace('-', '/');
-  }
-  
-  // DogAPIの個別犬種画像取得API
-  const url = `https://dog.ceo/api/breed/${apiBreed}/images/random`;
-  
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  const data = await response.json();
-  return data.message; // 画像URLを返す
-}
-
-// 4択ボタンの中身をセットアップする（プリロードされた選択肢を使用）
+/**
+ * 4択ボタンの中身をセットアップします（プリロードされた選択肢を使用）。
+ */
 function setupQuizOptionsFromPreload(choices) {
-  elOptions.forEach((btn, index) => {
+  el.elOptions.forEach((btn, index) => {
     const choiceKey = choices[index];
     const dogData = getDogData(choiceKey);
     btn.textContent = dogData.japanese;
-    btn.dataset.key = choiceKey; // 正誤判定のためにキーを保持
+    btn.dataset.key = choiceKey;
 
-    // クリックイベントの設定（一度だけ動作するように）
     btn.onclick = () => selectAnswer(choiceKey, btn);
   });
 }
 
-// プレイヤーが回答を選択したときの処理
+/**
+ * プレイヤーが回答を選択したときの処理です。
+ */
 function selectAnswer(selectedKey, clickedBtn) {
-  // すべての選択肢ボタンを無効化（連打防止）
-  elOptions.forEach(btn => btn.disabled = true);
-  elBtnHint.disabled = true; // ヒントも使えなくする
+  el.elOptions.forEach(btn => btn.disabled = true);
+  el.elBtnHint.disabled = true;
 
-  const correctKey = currentQuestionDog.key;
+  const correctKey = gameState.currentQuestionDog.key;
   const isCorrect = (selectedKey === correctKey);
 
-  // ぼかしを完全に解除する
-  elQuizDogImg.className = 'blur-level-0';
+  el.elQuizDogImg.className = 'blur-level-0';
 
-  // 出題（回答）回数の更新
-  const prevAttempts = saveData[`${correctKey}_attempts`] || 0;
-  saveData[`${correctKey}_attempts`] = prevAttempts + 1;
+  const prevAttempts = gameState.saveData[`${correctKey}_attempts`] || 0;
+  gameState.saveData[`${correctKey}_attempts`] = prevAttempts + 1;
 
   if (isCorrect) {
-    // 正解の場合
     clickedBtn.classList.add('correct');
-    currentScore++;
+    gameState.currentScore++;
     
-    // 難易度に応じた点数を計算
     let pointsEarned = 0;
-    if (difficulty === 'easy') {
-      pointsEarned = 4; // かんたんモードは一律4点
+    if (gameState.difficulty === 'easy') {
+      pointsEarned = 4;
     } else {
-      // むずかしいモード：ヒント回数に応じた点数を計算
-      if (hintCount === 0) pointsEarned = 10;
-      else if (hintCount === 1) pointsEarned = 8;
-      else if (hintCount === 2) pointsEarned = 6;
-      else if (hintCount === 3) pointsEarned = 4;
-      else if (hintCount === 4) pointsEarned = 2;
+      if (gameState.hintCount === 0) pointsEarned = 10;
+      else if (gameState.hintCount === 1) pointsEarned = 8;
+      else if (gameState.hintCount === 2) pointsEarned = 6;
+      else if (gameState.hintCount === 3) pointsEarned = 4;
+      else if (gameState.hintCount === 4) pointsEarned = 2;
     }
 
-    currentPoints += pointsEarned;
-    elQuizScore.textContent = `スコア：${currentPoints} 点 / せいかい：${currentScore}問`;
+    gameState.currentPoints += pointsEarned;
+    el.elQuizScore.textContent = `スコア：${gameState.currentPoints} 点 / せいかい：${gameState.currentScore}問`;
     
-    // セーブデータの更新（正解回数）
-    const prevWins = saveData[correctKey] || 0;
-    saveData[correctKey] = prevWins + 1;
+    const prevWins = gameState.saveData[correctKey] || 0;
+    gameState.saveData[correctKey] = prevWins + 1;
 
-    // 犬種ごとのベストスコア（ハイスコア）を保存する
-    const prevHighScore = saveData[`${correctKey}_highscore`] || 0;
+    const prevHighScore = gameState.saveData[`${correctKey}_highscore`] || 0;
     if (pointsEarned > prevHighScore) {
-      saveData[`${correctKey}_highscore`] = pointsEarned;
+      gameState.saveData[`${correctKey}_highscore`] = pointsEarned;
     }
 
-    saveGameData(); // ローカルストレージに書き込み
+    saveGameData();
 
-    // 新しく図鑑情報が解放されたかチェック（1, 2, 3回目に達した時）
-    const newWins = saveData[correctKey];
+    const newWins = gameState.saveData[correctKey];
     if (newWins === 1 || newWins === 2 || newWins === 3) {
-      newlyUnlockedDogs.push({
-        name: currentQuestionDog.japanese,
+      gameState.newlyUnlockedDogs.push({
+        name: gameState.currentQuestionDog.japanese,
         stage: newWins
       });
     }
   } else {
-    // 不正解の場合
     clickedBtn.classList.add('incorrect');
     
-    // 正解のボタンを青く光らせて教えてあげる
-    elOptions.forEach(btn => {
+    el.elOptions.forEach(btn => {
       if (btn.dataset.key === correctKey) {
         btn.classList.add('correct');
       }
@@ -584,13 +533,11 @@ function selectAnswer(selectedKey, clickedBtn) {
     saveGameData();
   }
 
-  // 1.8秒後に次の問題または結果画面へ
   setTimeout(() => {
-    // クイズ画面が非表示（クイズをやめた場合）なら処理を中断するガード処理
-    if (elQuizScreen.classList.contains('hidden')) return;
+    if (el.elQuizScreen.classList.contains('hidden')) return;
 
-    currentQuestionIndex++;
-    if (currentQuestionIndex < 10) {
+    gameState.currentQuestionIndex++;
+    if (gameState.currentQuestionIndex < 10) {
       showQuestion();
     } else {
       showResultScreen();
@@ -600,55 +547,21 @@ function selectAnswer(selectedKey, clickedBtn) {
 
 // ================= 2択ゲームの出題・回答処理 ================= //
 
-// 指定した犬種の画像URLを取得し、実際にロードが成功することを確認する（失敗時は自動リトライ）
-async function loadDogImageWithRetry(dogKey, maxRetries = 3) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      // 1. DogAPIから画像URLを取得
-      const url = await fetchDogImage(dogKey);
-      
-      // 2. 実際に画像をロードしてみて、画像ファイルが正しく読み込めるか検証
-      await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => reject(new Error("画像ファイルのロードに失敗しました"));
-        img.src = url;
-      });
-      
-      return url;
-    } catch (error) {
-      console.warn(`画像のロード試行 ${attempt}/${maxRetries} 失敗 (${dogKey}):`, error);
-      if (attempt === maxRetries) {
-        throw new Error(`画像ロードの最大試行回数に達しました (${dogKey})`);
-      }
-    }
-  }
-}
-
-// 画像を事前に読み込んでキャッシュするヘルパー関数
-function preloadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(url);
-    img.onerror = () => reject(new Error("画像ファイルのロードに失敗しました"));
-    img.src = url;
-  });
-}
-
-// エンドレスモード用のキャッシュ補充処理
+/**
+ * エンドレスモード用のキャッシュ補充処理です。
+ */
 async function supplementEndlessCache() {
-  if (preloadedQuestions.length >= 15) return;
+  if (gameState.preloadedQuestions.length >= 15) return;
   
-  const needed = 20 - preloadedQuestions.length;
+  const needed = 20 - gameState.preloadedQuestions.length;
   
   for (let i = 0; i < needed; i++) {
-    // 補充用のインデックスを決定
-    const nextIndex = currentQuestionIndex + preloadedQuestions.length + 1;
-    if (nextIndex >= currentQuizList.length) {
+    const nextIndex = gameState.currentQuestionIndex + gameState.preloadedQuestions.length + 1;
+    if (nextIndex >= gameState.currentQuizList.length) {
       generateQuizList(100);
     }
     
-    const correctKey = currentQuizList[nextIndex % currentQuizList.length];
+    const correctKey = gameState.currentQuizList[nextIndex % gameState.currentQuizList.length];
     const wrongKey = getIncorrectChoices(correctKey, 1)[0];
     const isLeftCorrect = Math.random() < 0.5;
     
@@ -657,7 +570,7 @@ async function supplementEndlessCache() {
         loadDogImageWithRetry(isLeftCorrect ? correctKey : wrongKey),
         loadDogImageWithRetry(isLeftCorrect ? wrongKey : correctKey)
       ]);
-      preloadedQuestions.push({
+      gameState.preloadedQuestions.push({
         correctKey,
         wrongKey,
         urlLeft,
@@ -670,46 +583,41 @@ async function supplementEndlessCache() {
   }
 }
 
-// 2択ゲームの1問を表示する
+/**
+ * 2択ゲームの1問を表示します。
+ */
 async function showQuestion2Choices() {
-  clearEndlessTimer(); // エンドレス用のタイマーだけを止める
+  clearEndlessTimer();
 
-  // 左右のボタンのスタイル初期化と有効化
-  [elChoiceLeft, elChoiceRight].forEach(btn => {
+  [el.elChoiceLeft, el.elChoiceRight].forEach(btn => {
     btn.classList.remove('correct', 'incorrect');
     btn.disabled = false;
   });
 
-  // 〇×フィードバック表示をリセット
-  [elFeedbackLeft, elFeedbackRight].forEach(el => {
-    el.className = 'choice-feedback hidden';
-    el.textContent = '';
-    el.style.fontSize = ''; // フォントサイズを通常に戻す
+  [el.elFeedbackLeft, el.elFeedbackRight].forEach(element => {
+    element.className = 'choice-feedback hidden';
+    element.textContent = '';
+    element.style.fontSize = '';
   });
 
-  // 進捗テキストの更新
-  if (activeGameType === 'timeattack') {
-    elQuizProgress.textContent = `第 ${currentQuestionIndex + 1} / 10 問`;
+  if (gameState.activeGameType === 'timeattack') {
+    el.elQuizProgress.textContent = `第 ${gameState.currentQuestionIndex + 1} / 10 問`;
   } else {
-    elQuizProgress.textContent = `連続正解: ${endlessScore} 問`;
+    el.elQuizProgress.textContent = `連続正解: ${gameState.endlessScore} 問`;
   }
 
-  // プリロードキャッシュからデータを取得
   let qData;
-  if (activeGameType === 'timeattack') {
-    qData = preloadedQuestions[currentQuestionIndex];
+  if (gameState.activeGameType === 'timeattack') {
+    qData = gameState.preloadedQuestions[gameState.currentQuestionIndex];
   } else {
-    // エンドレスモード
-    qData = preloadedQuestions.shift(); // 先頭から取り出す
-    // 取り出したのでキャッシュ補充をバックグラウンドで開始
+    qData = gameState.preloadedQuestions.shift();
     supplementEndlessCache();
   }
 
   if (!qData) {
     console.error("プリロードキャッシュが空です！フォールバックを開始します");
-    // 万が一のための即時リロード
     try {
-      const correctKey = currentQuizList[currentQuestionIndex % currentQuizList.length];
+      const correctKey = gameState.currentQuizList[gameState.currentQuestionIndex % gameState.currentQuizList.length];
       const wrongKey = getIncorrectChoices(correctKey, 1)[0];
       const isLeftCorrect = Math.random() < 0.5;
       const [urlLeft, urlRight] = await Promise.all([
@@ -724,102 +632,93 @@ async function showQuestion2Choices() {
   }
 
   const correctKey = qData.correctKey;
-  currentQuestionDog = getDogData(correctKey);
-  currentQuestionDog.key = correctKey;
+  gameState.currentQuestionDog = getDogData(correctKey);
+  gameState.currentQuestionDog.key = correctKey;
 
-  // 画面のタイトルにお題の日本語名を表示
-  elTwoChoicesDogName.textContent = currentQuestionDog.japanese;
+  el.elTwoChoicesDogName.textContent = gameState.currentQuestionDog.japanese;
 
-  // キャッシュ、または今ロードした画像を要素にセット
-  elImgChoiceLeft.src = qData.urlLeft;
-  elImgChoiceRight.src = qData.urlRight;
+  el.elImgChoiceLeft.src = qData.urlLeft;
+  el.elImgChoiceRight.src = qData.urlRight;
 
-  // ボタンに正誤情報とキーを保存
-  elChoiceLeft.dataset.isCorrect = qData.isLeftCorrect ? "true" : "false";
-  elChoiceRight.dataset.isCorrect = qData.isLeftCorrect ? "false" : "true";
-  elChoiceLeft.dataset.key = correctKey;
-  elChoiceRight.dataset.key = correctKey;
+  el.elChoiceLeft.dataset.isCorrect = qData.isLeftCorrect ? "true" : "false";
+  el.elChoiceRight.dataset.isCorrect = qData.isLeftCorrect ? "false" : "true";
+  el.elChoiceLeft.dataset.key = correctKey;
+  el.elChoiceRight.dataset.key = correctKey;
 
-  // ボタンクリック時のイベントを設定
-  elChoiceLeft.onclick = () => selectAnswer2Choices(qData.isLeftCorrect, elChoiceLeft);
-  elChoiceRight.onclick = () => selectAnswer2Choices(!qData.isLeftCorrect, elChoiceRight);
+  el.elChoiceLeft.onclick = () => selectAnswer2Choices(qData.isLeftCorrect, el.elChoiceLeft);
+  el.elChoiceRight.onclick = () => selectAnswer2Choices(!qData.isLeftCorrect, el.elChoiceRight);
 
-  // エンドレスモードの場合は3秒カウントダウンタイマーを始動
-  if (activeGameType === 'endless') {
+  if (gameState.activeGameType === 'endless') {
     startEndlessTimer();
   }
 }
 
-// エンドレスモードのカウントダウンタイマーを開始する
+/**
+ * エンドレスモードのカウントダウンタイマーを開始します。
+ */
 function startEndlessTimer() {
-  endlessTimeRemaining = ENDLESS_LIMIT_TIME;
-  elTimerBar.style.width = '100%';
+  gameState.endlessTimeRemaining = gameState.ENDLESS_LIMIT_TIME;
+  el.elTimerBar.style.width = '100%';
 
-  // 50ミリ秒ごとにゲージを減らす
-  endlessTimerInterval = setInterval(() => {
-    endlessTimeRemaining -= 0.05;
+  gameState.endlessTimerInterval = setInterval(() => {
+    gameState.endlessTimeRemaining -= 0.05;
     
-    const percentage = Math.max(0, (endlessTimeRemaining / ENDLESS_LIMIT_TIME) * 100);
-    elTimerBar.style.width = `${percentage}%`;
+    const percentage = Math.max(0, (gameState.endlessTimeRemaining / gameState.ENDLESS_LIMIT_TIME) * 100);
+    el.elTimerBar.style.width = `${percentage}%`;
 
-    // 時間切れになった場合
-    if (endlessTimeRemaining <= 0) {
+    if (gameState.endlessTimeRemaining <= 0) {
       clearAllTimers();
-      endGameEndless(true); // 時間切れゲームオーバー
+      endGameEndless(true);
     }
   }, 50);
 }
 
-// エンドレス用のタイマーのみを停止する関数
+/**
+ * エンドレス用のタイマーのみを停止します。
+ */
 function clearEndlessTimer() {
-  if (endlessTimerInterval) {
-    clearInterval(endlessTimerInterval);
-    endlessTimerInterval = null;
+  if (gameState.endlessTimerInterval) {
+    clearInterval(gameState.endlessTimerInterval);
+    gameState.endlessTimerInterval = null;
   }
 }
 
-// 2択ゲームでプレイヤーが回答を選択した時の処理
+/**
+ * 2択ゲームでプレイヤーが回答を選択した時の処理です。
+ */
 function selectAnswer2Choices(isCorrect, clickedBtn) {
-  // 左右のボタンを無効化（連打防止）
-  elChoiceLeft.disabled = true;
-  elChoiceRight.disabled = true;
+  el.elChoiceLeft.disabled = true;
+  el.elChoiceRight.disabled = true;
 
-  // エンドレスタイマーの停止
   clearEndlessTimer();
 
-  const correctKey = currentQuestionDog.key;
+  const correctKey = gameState.currentQuestionDog.key;
 
-  // 出題（遭遇）回数の記録
-  const prevAttempts = saveData[`${correctKey}_attempts`] || 0;
-  saveData[`${correctKey}_attempts`] = prevAttempts + 1;
+  const prevAttempts = gameState.saveData[`${correctKey}_attempts`] || 0;
+  gameState.saveData[`${correctKey}_attempts`] = prevAttempts + 1;
 
-  // 〇×フィードバック要素の特定
-  const elFeedbackClicked = (clickedBtn === elChoiceLeft) ? elFeedbackLeft : elFeedbackRight;
-  const elFeedbackOther = (clickedBtn === elChoiceLeft) ? elFeedbackRight : elFeedbackLeft;
+  const elFeedbackClicked = (clickedBtn === el.elChoiceLeft) ? el.elFeedbackLeft : el.elFeedbackRight;
+  const elFeedbackOther = (clickedBtn === el.elChoiceLeft) ? el.elFeedbackRight : el.elFeedbackLeft;
 
   if (isCorrect) {
     clickedBtn.classList.add('correct');
-    
-    // 正解の〇スタンプを表示
     elFeedbackClicked.textContent = '⭕';
     elFeedbackClicked.className = 'choice-feedback show';
 
-    if (activeGameType === 'timeattack') {
-      currentScore++;
+    if (gameState.activeGameType === 'timeattack') {
+      gameState.currentScore++;
     } else {
-      endlessScore++;
-      currentScore = endlessScore;
+      gameState.endlessScore++;
+      gameState.currentScore = gameState.endlessScore;
     }
 
-    // セーブデータ更新（正解回数）
-    const prevWins = saveData[correctKey] || 0;
-    saveData[correctKey] = prevWins + 1;
+    const prevWins = gameState.saveData[correctKey] || 0;
+    gameState.saveData[correctKey] = prevWins + 1;
 
-    // 図鑑の新規解放チェック
-    const newWins = saveData[correctKey];
+    const newWins = gameState.saveData[correctKey];
     if (newWins === 1 || newWins === 2 || newWins === 3) {
-      newlyUnlockedDogs.push({
-        name: currentQuestionDog.japanese,
+      gameState.newlyUnlockedDogs.push({
+        name: gameState.currentQuestionDog.japanese,
         stage: newWins
       });
     }
@@ -828,7 +727,6 @@ function selectAnswer2Choices(isCorrect, clickedBtn) {
   } else {
     clickedBtn.classList.add('incorrect');
     
-    // 選んだ画像に❌スタンプ、正解画像に⭕スタンプを表示
     elFeedbackClicked.textContent = '❌';
     elFeedbackClicked.className = 'choice-feedback show';
 
@@ -836,117 +734,118 @@ function selectAnswer2Choices(isCorrect, clickedBtn) {
     elFeedbackOther.className = 'choice-feedback show';
     elFeedbackOther.style.fontSize = '3.5rem';
 
-    // もう一方の正解ボタンを光らせる
-    if (clickedBtn === elChoiceLeft) {
-      elChoiceRight.classList.add('correct');
+    if (clickedBtn === el.elChoiceLeft) {
+      el.elChoiceRight.classList.add('correct');
     } else {
-      elChoiceLeft.classList.add('correct');
+      el.elChoiceLeft.classList.add('correct');
     }
 
-    if (activeGameType === 'timeattack') {
-      // タイムアタック：ペナルティ+3秒、間違えた回数カウントアップ
-      timeAttackPenaltySeconds += 3;
-      timeAttackWrongCount++;
+    if (gameState.activeGameType === 'timeattack') {
+      gameState.timeAttackPenaltySeconds += 3;
+      gameState.timeAttackWrongCount++;
 
-      // 画面全体を一瞬赤く点滅させる演出
-      elQuizScreen.classList.add('penalty-flash');
-      elQuizScreen.addEventListener('animationend', () => {
-        elQuizScreen.classList.remove('penalty-flash');
+      el.elQuizScreen.classList.add('penalty-flash');
+      el.elQuizScreen.addEventListener('animationend', () => {
+        el.elQuizScreen.classList.remove('penalty-flash');
       }, { once: true });
     }
 
     saveGameData();
   }
 
-  // 1.5秒後に次の問題または結果画面へ
   setTimeout(() => {
-    if (elQuizScreen.classList.contains('hidden')) return;
+    if (el.elQuizScreen.classList.contains('hidden')) return;
 
-    if (activeGameType === 'timeattack') {
-      currentQuestionIndex++;
-      if (currentQuestionIndex < 10) {
+    if (gameState.activeGameType === 'timeattack') {
+      gameState.currentQuestionIndex++;
+      if (gameState.currentQuestionIndex < 10) {
         showQuestion2Choices();
       } else {
         endGameTimeAttack();
       }
     } else {
       if (isCorrect) {
-        currentQuestionIndex++;
+        gameState.currentQuestionIndex++;
         showQuestion2Choices();
       } else {
-        endGameEndless(false); // 不正解によるゲームオーバー
+        endGameEndless(false);
       }
     }
   }, 1500);
 }
 
-// タイムアタックゲーム終了時の処理
+/**
+ * タイムアタックゲーム終了時の処理です。
+ */
 function endGameTimeAttack() {
   clearAllTimers();
   
-  const finalTime = timeAttackElapsedTime + timeAttackPenaltySeconds;
+  const finalTime = gameState.timeAttackElapsedTime + gameState.timeAttackPenaltySeconds;
 
-  // ローカルストレージにベストタイムを保存する処理
-  const bestTimeKey = `${quizMode}_timeattack_best`;
-  const prevBestTime = saveData[bestTimeKey] || 999999;
+  const bestTimeKey = `${gameState.quizMode}_timeattack_best`;
+  const prevBestTime = gameState.saveData[bestTimeKey] || 999999;
   let isNewRecord = false;
 
   if (finalTime < prevBestTime) {
-    saveData[bestTimeKey] = finalTime;
+    gameState.saveData[bestTimeKey] = finalTime;
     saveGameData();
     isNewRecord = true;
   }
 
   showResultScreen2Choices('timeattack', {
     finalTime: finalTime,
-    rawTime: timeAttackElapsedTime,
-    penalty: timeAttackPenaltySeconds,
-    wrongCount: timeAttackWrongCount,
+    rawTime: gameState.timeAttackElapsedTime,
+    penalty: gameState.timeAttackPenaltySeconds,
+    wrongCount: gameState.timeAttackWrongCount,
     isNewRecord: isNewRecord
   });
 }
 
-// エンドレスゲーム終了時の処理
+/**
+ * エンドレスゲーム終了時の処理です。
+ */
 function endGameEndless(isTimeout) {
   clearAllTimers();
 
-  // ローカルストレージにハイスコアを保存する処理
-  const highScoreKey = `${quizMode}_endless_best`;
-  const prevHighScore = saveData[highScoreKey] || 0;
+  const highScoreKey = `${gameState.quizMode}_endless_best`;
+  const prevHighScore = gameState.saveData[highScoreKey] || 0;
   let isNewRecord = false;
 
-  if (endlessScore > prevHighScore) {
-    saveData[highScoreKey] = endlessScore;
+  if (gameState.endlessScore > prevHighScore) {
+    gameState.saveData[highScoreKey] = gameState.endlessScore;
     saveGameData();
     isNewRecord = true;
   }
 
   showResultScreen2Choices('endless', {
-    score: endlessScore,
+    score: gameState.endlessScore,
     isNewRecord: isNewRecord,
     isTimeout: isTimeout
   });
 }
 
 // ================= ヒント機能（おやつをあげる）の処理 ================= //
-function useHint() {
-  if (difficulty !== 'hard' || hintCount >= 4) return;
 
-  hintCount++;
-  elBtnHint.innerHTML = `<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り${4 - hintCount}回)`;
+/**
+ * クイズ画面でヒント（おやつ）を使用します。
+ */
+export function useHint() {
+  if (gameState.difficulty !== 'hard' || gameState.hintCount >= 4) return;
 
-  if (hintCount === 1) {
-    elHintStatus.textContent = "おやつを喜んで食べているよ！(ヒント残り3回)";
+  gameState.hintCount++;
+  el.elBtnHint.innerHTML = `<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り${4 - gameState.hintCount}回)`;
+
+  if (gameState.hintCount === 1) {
+    el.elHintStatus.textContent = "おやつを喜んで食べているよ！(ヒント残り3回)";
   } 
-  else if (hintCount === 2) {
-    elHintStatus.textContent = "美味しい！ともっと喜んでいます！(ヒント残り2回)";
+  else if (gameState.hintCount === 2) {
+    el.elHintStatus.textContent = "美味しい！ともっと喜んでいます！(ヒント残り2回)";
   } 
-  else if (hintCount === 3) {
-    // 選択肢の絞り込み
-    const correctKey = currentQuestionDog.key;
+  else if (gameState.hintCount === 3) {
+    const correctKey = gameState.currentQuestionDog.key;
     let hiddenCount = 0;
     
-    const shuffledOptions = [...elOptions];
+    const shuffledOptions = [...el.elOptions];
     shuffleArray(shuffledOptions);
 
     shuffledOptions.forEach(btn => {
@@ -956,400 +855,116 @@ function useHint() {
       }
     });
 
-    elHintStatus.textContent = "ハズレの選択肢が２つ消えたよ！(ヒント残り1回)";
+    el.elHintStatus.textContent = "ハズレの選択肢が２つ消えたよ！(ヒント残り1回)";
   } 
-  else if (hintCount === 4) {
-    // 頭文字ヒント
-    const jName = currentQuestionDog.japanese;
+  else if (gameState.hintCount === 4) {
+    const jName = gameState.currentQuestionDog.japanese;
     const firstChar = jName.charAt(0);
 
-    elTextHintBox.textContent = `💡 ヒント：この犬種は「${firstChar}」から始まるよ！`;
-    elTextHintBox.classList.remove('hidden');
+    el.elTextHintBox.textContent = `💡 ヒント：この犬種は「${firstChar}」から始まるよ！`;
+    el.elTextHintBox.classList.remove('hidden');
 
-    elBtnHint.disabled = true;
-    elHintStatus.textContent = "ヒントをすべて使いました！";
+    el.elBtnHint.disabled = true;
+    el.elHintStatus.textContent = "ヒントをすべて使いました！";
   }
 }
 
 // ================= 結果画面の描画処理 ================= //
 
-// 結果画面を表示する（4択クイズ用）
+/**
+ * 結果画面を表示します（4択クイズ用）。
+ */
 function showResultScreen() {
   switchScreen('result-screen');
 
-  elResult4ChoicesBox.classList.remove('hidden');
-  elResultTimeAttackBox.classList.add('hidden');
-  elResultEndlessBox.classList.add('hidden');
-  elResultEndlessHighscoreMsg.classList.add('hidden');
+  el.elResult4ChoicesBox.classList.remove('hidden');
+  el.elResultTimeAttackBox.classList.add('hidden');
+  el.elResultEndlessBox.classList.add('hidden');
+  el.elResultEndlessHighscoreMsg.classList.add('hidden');
 
-  elResultScoreVal.textContent = currentScore;
-  elResultPointsVal.textContent = currentPoints;
+  el.elResultScoreVal.textContent = gameState.currentScore;
+  el.elResultPointsVal.textContent = gameState.currentPoints;
 
-  if (currentPoints === 100) {
-    elResultMessage.textContent = "パーフェクト！ノーヒントで全問大正解！あなたは立派なわんわん博士だね！🐶✨";
-  } else if (currentPoints >= 80) {
-    elResultMessage.textContent = "すごい！少ないヒントで高得点だね！🐾";
-  } else if (currentPoints >= 50) {
-    elResultMessage.textContent = "がんばったね！ヒントをうまく使ってクリアできたよ！📖";
+  if (gameState.currentPoints === 100) {
+    el.elResultMessage.textContent = "パーフェクト！ノーヒントで全問大正解！あなたは立派なわんわん博士だね！🐶✨";
+  } else if (gameState.currentPoints >= 80) {
+    el.elResultMessage.textContent = "すごい！少ないヒントで高得点だね！🐾";
+  } else if (gameState.currentPoints >= 50) {
+    el.elResultMessage.textContent = "がんばったね！ヒントをうまく使ってクリアできたよ！📖";
   } else {
-    elResultMessage.textContent = "クイズに挑戦してくれてありがとう！もう一回やってみよう！🐶";
+    el.elResultMessage.textContent = "クイズに挑戦してくれてありがとう！もう一回やってみよう！🐶";
   }
 
   renderNewUnlocksList();
 }
 
-// 2択ゲーム用の結果画面を表示する
+/**
+ * 結果画面を表示します（2択ゲーム用）。
+ */
 function showResultScreen2Choices(type, data) {
   switchScreen('result-screen');
 
-  elResult4ChoicesBox.classList.add('hidden');
-  elResultTimeAttackBox.classList.add('hidden');
-  elResultEndlessBox.classList.add('hidden');
-  elResultEndlessHighscoreMsg.classList.add('hidden');
+  el.elResult4ChoicesBox.classList.add('hidden');
+  el.elResultTimeAttackBox.classList.add('hidden');
+  el.elResultEndlessBox.classList.add('hidden');
+  el.elResultEndlessHighscoreMsg.classList.add('hidden');
 
   if (type === 'timeattack') {
-    elResultTimeAttackBox.classList.remove('hidden');
-    elResultTaTimeVal.textContent = data.finalTime.toFixed(2);
-    elResultTaRawTime.textContent = data.rawTime.toFixed(2);
-    elResultTaPenaltyVal.textContent = data.penalty;
-    elResultTaWrongVal.textContent = data.wrongCount;
+    el.elResultTimeAttackBox.classList.remove('hidden');
+    el.elResultTaTimeVal.textContent = data.finalTime.toFixed(2);
+    el.elResultTaRawTime.textContent = data.rawTime.toFixed(2);
+    el.elResultTaPenaltyVal.textContent = data.penalty;
+    el.elResultTaWrongVal.textContent = data.wrongCount;
 
     if (data.isNewRecord) {
-      elResultMessage.textContent = `🏆 自己ベスト更新！すごい！タイムアタック新記録達成です！ ⏱️✨`;
+      el.elResultMessage.textContent = `🏆 自己ベスト更新！すごい！タイムアタック新記録達成です！ ⏱️✨`;
     } else {
-      const bestTimeKey = `${quizMode}_timeattack_best`;
-      const bestTime = saveData[bestTimeKey] || 999999;
-      elResultMessage.textContent = `30問クリアおめでとう！(自己ベスト: ${bestTime.toFixed(2)}秒) 次はもっと速く走れるかな？🐾`;
+      const bestTimeKey = `${gameState.quizMode}_timeattack_best`;
+      const bestTime = gameState.saveData[bestTimeKey] || 999999;
+      el.elResultMessage.textContent = `30問クリアおめでとう！(自己ベスト: ${bestTime.toFixed(2)}秒) 次はもっと速く走れるかな？🐾`;
     }
   } else {
-    elResultEndlessBox.classList.remove('hidden');
-    elResultEndlessScoreVal.textContent = data.score;
+    el.elResultEndlessBox.classList.remove('hidden');
+    el.elResultEndlessScoreVal.textContent = data.score;
 
     if (data.isNewRecord) {
-      elResultEndlessHighscoreMsg.classList.remove('hidden');
-      elResultMessage.textContent = `🏆 ハイスコア更新！どこまでも正解し続けるわんわんマスターだね！ ♾️✨`;
+      el.elResultEndlessHighscoreMsg.classList.remove('hidden');
+      el.elResultMessage.textContent = `🏆 ハイスコア更新！どこまでも正解し続けるわんわんマスターだね！ ♾️✨`;
     } else {
-      const highScoreKey = `${quizMode}_endless_best`;
-      const highScore = saveData[highScoreKey] || 0;
+      const highScoreKey = `${gameState.quizMode}_endless_best`;
+      const highScore = gameState.saveData[highScoreKey] || 0;
       const timeoutText = data.isTimeout ? "ああっ、時間切れ！" : "おっと、間違えちゃった！";
-      elResultMessage.textContent = `${timeoutText} ${data.score}問連続正解したよ！ (自己ベスト: ${highScore}問) 次は記録を超えられるかな？🐶`;
+      el.elResultMessage.textContent = `${timeoutText} ${data.score}問連続正解したよ！ (自己ベスト: ${highScore}問) 次は記録を超えられるかな？🐶`;
     }
   }
 
   renderNewUnlocksList();
 }
 
-// 結果画面の新しく図鑑に解放された犬のリストを描画する
-function renderNewUnlocksList() {
-  if (newlyUnlockedDogs.length > 0) {
-    elNewUnlocksBox.classList.remove('hidden');
-    elNewUnlocksList.innerHTML = '';
-
-    newlyUnlockedDogs.forEach(item => {
-      const elItem = document.createElement('div');
-      elItem.className = 'unlock-item';
-
-      let stageText = '';
-      if (item.stage === 1) stageText = 'カラー写真公開！';
-      if (item.stage === 2) stageText = '生物情報がよめるよ！';
-      if (item.stage === 3) stageText = '豆知識がよめるよ！';
-
-      elItem.innerHTML = `
-        <span>${item.name}</span>
-        <span class="new-badge">${stageText}</span>
-      `;
-      elNewUnlocksList.appendChild(elItem);
-    });
-  } else {
-    elNewUnlocksBox.classList.add('hidden');
-  }
-}
-
-// ================= ポケット犬種図鑑のロジック ================= //
-
-let currentFilter = 'all'; // 図鑑画面の現在選択されているフィルター
-
-// 図鑑の描画
-function renderDictionary() {
-  const allKeys = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
-  // 五十音順に並び替え
-  allKeys.sort((a, b) => {
-    const nameA = getDogData(a).japanese;
-    const nameB = getDogData(b).japanese;
-    return nameA.localeCompare(nameB, 'ja');
-  });
-
-  let collectedCount = 0;
-  allKeys.forEach(key => {
-    if ((saveData[key] || 0) > 0) {
-      collectedCount++;
-    }
-  });
-
-  const totalCount = allKeys.length;
-  const percent = totalCount > 0 ? Math.round((collectedCount / totalCount) * 100) : 0;
-
-  elCollectedCount.textContent = collectedCount;
-  elTotalCount.textContent = totalCount;
-  elCollectedPercent.textContent = percent;
-
-  elDictGrid.innerHTML = '';
-  
-  allKeys.forEach(key => {
-    const dogWins = saveData[key] || 0;
-    const dogData = getDogData(key);
-    const highScore = saveData[`${key}_highscore`] || (dogWins > 0 ? 10 : 0);
-    const attempts = saveData[`${key}_attempts`] || dogWins;
-    const accuracy = attempts > 0 ? Math.round((dogWins / attempts) * 100) : 0;
-
-    if (currentFilter === 'collected' && dogWins === 0) return;
-    if (currentFilter === 'uncollected' && dogWins > 0) return;
-
-    const elCard = document.createElement('div');
-    elCard.className = `dict-card locked`;
-
-    let nameHtml = '？？？';
-    let imageHtml = '';
-    let starsHtml = '';
-    let actionBtnHtml = '';
-    let taBtnHtml = '';
-    let infoHtml = '';
-
-    if (dogWins === 0) {
-      elCard.className = 'dict-card locked';
-      starsHtml = `
-        <div class="star-indicator">
-          <span>🐾</span><span>🐾</span><span>🐾</span>
-        </div>
-      `;
-    } 
-    else if (dogWins === 1) {
-      elCard.className = 'dict-card unlocked-1';
-      nameHtml = dogData.japanese;
-      
-      imageHtml = `<img id="dict-img-${key.replace('-','_')}" src="" alt="${dogData.japanese}">`;
-      loadDictCardImage(key);
-
-      infoHtml = `
-        <div class="dict-info-text">原産国：？？？</div>
-        <div class="dict-info-text">大きさ：？？？</div>
-        <div class="dict-info-text">ベスト：${highScore}点</div>
-        <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
-      `;
-
-      starsHtml = `
-        <div class="star-indicator">
-          <span class="active">🐾</span><span>🐾</span><span>🐾</span>
-        </div>
-      `;
-      taBtnHtml = `<button class="dict-play-ta-btn" onclick="startTimeAttackFromDict('${key}')">2択で遊ぶ ⏱️</button>`;
-    } 
-    else if (dogWins === 2) {
-      elCard.className = 'dict-card unlocked-2';
-      nameHtml = dogData.japanese;
-
-      imageHtml = `<img id="dict-img-${key.replace('-','_')}" src="" alt="${dogData.japanese}">`;
-      loadDictCardImage(key); 
-
-      infoHtml = `
-        <div class="dict-info-text">原産国：${dogData.origin}</div>
-        <div class="dict-info-text">大きさ：${dogData.size}</div>
-        <div class="dict-info-text">ベスト：${highScore}点</div>
-        <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
-      `;
-
-      starsHtml = `
-        <div class="star-indicator">
-          <span class="active">🐾</span><span class="active">🐾</span><span>🐾</span>
-        </div>
-      `;
-      taBtnHtml = `<button class="dict-play-ta-btn" onclick="startTimeAttackFromDict('${key}')">2択で遊ぶ ⏱️</button>`;
-    } 
-    else if (dogWins >= 3) {
-      elCard.className = 'dict-card unlocked-3';
-      nameHtml = dogData.japanese;
-
-      imageHtml = `<img id="dict-img-${key.replace('-','_')}" src="" alt="${dogData.japanese}">`;
-      loadDictCardImage(key);
-
-      infoHtml = `
-        <div class="dict-info-text">原産国：${dogData.origin}</div>
-        <div class="dict-info-text">大きさ：${dogData.size}</div>
-        <div class="dict-info-text">ベスト：${highScore}点</div>
-        <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
-      `;
-
-      starsHtml = `
-        <div class="star-indicator">
-          <span class="active">🐾</span><span class="active">🐾</span><span class="active">🐾</span>
-        </div>
-      `;
-      actionBtnHtml = `<button class="dict-details-btn" onclick="showDogDetailsPopup('${key}')">豆知識 💡</button>`;
-      taBtnHtml = `<button class="dict-play-ta-btn" onclick="startTimeAttackFromDict('${key}')">2択で遊ぶ ⏱️</button>`;
-    }
-
-    elCard.innerHTML = `
-      <div class="dict-image-box">
-        ${imageHtml}
-      </div>
-      <div class="dict-dog-name">${nameHtml}</div>
-      ${infoHtml}
-      ${starsHtml}
-      <div class="dict-actions-wrapper" style="width: 100%; margin-top: 6px;">
-        ${actionBtnHtml}
-        ${taBtnHtml}
-      </div>
-    `;
-
-    elDictGrid.appendChild(elCard);
-  });
-}
-
-// 図鑑のフィルター切り替え
-function filterDictionary(filterType) {
-  currentFilter = filterType;
-
-  elBtnFilterAll.classList.remove('active');
-  elBtnFilterCollected.classList.remove('active');
-  elBtnFilterUncollected.classList.remove('active');
-
-  if (filterType === 'all') elBtnFilterAll.classList.add('active');
-  if (filterType === 'collected') elBtnFilterCollected.classList.add('active');
-  if (filterType === 'uncollected') elBtnFilterUncollected.classList.add('active');
-
-  renderDictionary();
-}
-
-// 図鑑一覧の写真を非同期で DogAPI から取得してセットする関数
-async function loadDictCardImage(dogKey) {
-  try {
-    const imgUrl = await fetchDogImage(dogKey);
-    const imgElement = document.getElementById(`dict-img-${dogKey.replace('-','_')}`);
-    if (imgElement) {
-      imgElement.src = imgUrl;
-    }
-  } catch (error) {
-    console.error("図鑑用画像の取得に失敗しました:", dogKey, error);
-    const imgElement = document.getElementById(`dict-img-${dogKey.replace('-','_')}`);
-    if (imgElement) {
-      // 画像要素を非表示にする
-      imgElement.style.display = 'none';
-      const imgBox = imgElement.parentElement;
-      if (imgBox) {
-        // 親ボックスにエラー用のスタイルクラスを付与
-        imgBox.classList.add('error');
-      }
-    }
-  }
-}
-
-// 豆知識ポップアップを表示する関数
-async function showDogDetailsPopup(dogKey) {
-  const dogData = getDogData(dogKey);
-
-  const elPopupOverlay = document.createElement('div');
-  elPopupOverlay.className = 'dict-popup-overlay';
-  elPopupOverlay.id = 'dict-popup-overlay';
-
-  elPopupOverlay.addEventListener('click', (e) => {
-    if (e.target.id === 'dict-popup-overlay' || e.target.classList.contains('btn-close-popup')) {
-      document.body.removeChild(elPopupOverlay);
-    }
-  });
-
-  let imgUrl = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=200';
-  try {
-    imgUrl = await fetchDogImage(dogKey);
-  } catch (e) {
-    console.error("ポップアップ用画像取得エラー:", e);
-  }
-
-  elPopupOverlay.innerHTML = `
-    <div class="dict-popup">
-      <img class="popup-image" src="${imgUrl}" alt="${dogData.japanese}">
-      <h3>🐾 ${dogData.japanese} 🐾</h3>
-      <p>${dogData.description}</p>
-      <button class="btn btn-secondary btn-close-popup" style="padding: 8px 20px; font-size: 0.9rem;">とじる ❌</button>
-    </div>
-  `;
-
-  document.body.appendChild(elPopupOverlay);
-}
-
-// グローバルスコープへの登録（HTMLのインライン onclick 属性に対応するため）
-window.showDogDetailsPopup = showDogDetailsPopup;
-
-// ================= 画像取得エラー時の差し替え・スキップ処理ヘルパー ================= //
-
-// 4択クイズでお題となる犬種の画像取得が完全に失敗した場合、別のお題に差し替える
-function regenerateQuestion4Choices() {
-  let allCandidates = [];
-  if (quizMode === 'popular') {
-    allCandidates = Object.keys(POPULAR_DOGS);
-  } else {
-    allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
-  }
-  
-  const available = allCandidates.filter(key => !currentQuizList.includes(key));
-  shuffleArray(available);
-  
-  if (available.length > 0) {
-    currentQuizList[currentQuestionIndex] = available[0];
-    showQuestion();
-  } else {
-    showResultScreen();
-  }
-}
-
-// 2択タイムアタックでお題犬種の画像取得が完全に失敗した場合、進捗を維持してお題を変更し続行
-function regenerateTimeAttackDog(failedBreed) {
-  let allCandidates = [];
-  if (quizMode === 'popular') {
-    allCandidates = Object.keys(POPULAR_DOGS);
-  } else {
-    allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
-  }
-  
-  const available = allCandidates.filter(key => key !== failedBreed);
-  shuffleArray(available);
-  
-  if (available.length > 0) {
-    const newBreed = available[0];
-    for (let i = currentQuestionIndex; i < currentQuizList.length; i++) {
-      currentQuizList[i] = newBreed;
-    }
-    showQuestion2Choices();
-  } else {
-    switchScreen('start-screen');
-  }
-}
-
-// 2択クイズ（エンドレス等）でリスト内の特定のインデックスの問題を別の犬種に差し替える
-function replaceQuizListItem(index) {
-  let allCandidates = [];
-  if (quizMode === 'popular') {
-    allCandidates = Object.keys(POPULAR_DOGS);
-  } else {
-    allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
-  }
-  
-  const currentKeys = currentQuizList;
-  const available = allCandidates.filter(key => !currentKeys.includes(key));
-  shuffleArray(available);
-  
-  if (available.length > 0) {
-    currentQuizList[index] = available[0];
-  }
-}
-
-// 図鑑から直接2択タイムアタックを開始する
-function startTimeAttackFromDict(dogKey) {
-  // 図鑑から指定された犬種を一時キーとして保持
-  targetBreedKeyFromDict = dogKey;
-  
-  // クイズゲームをタイムアタックで起動
+/**
+ * 図鑑から直接2択タイムアタックを開始します。
+ */
+export function startTimeAttackFromDict(dogKey) {
+  gameState.targetBreedKeyFromDict = dogKey;
   startQuizGame('timeattack', dogKey);
 }
 
-// グローバルスコープに登録
+// グローバルスコープに登録（図鑑のインライン onclick 属性に対応するため）
 window.startTimeAttackFromDict = startTimeAttackFromDict;
+
+// ================= 自動テスト用グローバルブリッジ ================= //
+if (typeof window !== 'undefined') {
+  window.showQuestion = showQuestion;
+  
+  // テストコード（app.spec.js）が直接参照するグローバル変数へのエイリアス定義
+  Object.defineProperty(window, 'currentQuestionDog', {
+    get: () => gameState.currentQuestionDog
+  });
+  Object.defineProperty(window, 'preloadedQuestions', {
+    get: () => gameState.preloadedQuestions,
+    set: (val) => { gameState.preloadedQuestions = val; }
+  });
+  Object.defineProperty(window, 'currentQuestionIndex', {
+    get: () => gameState.currentQuestionIndex
+  });
+}

@@ -23,15 +23,27 @@ DogAPI（インターネット上の犬のデータを提供する仕組み）�
 
 | ファイル名 | 配置パス | 説明 | 追加日 | バージョン |
 | :--- | :--- | :--- | :--- | :--- |
-| [GEMINI.md](file:///c:/Users/Owner/Documents/myproject/DogCollection/GEMINI.md) | `c:/Users/Owner/Documents/myproject/DogCollection/GEMINI.md` | プロジェクト管理・開発状況記録ドキュメント | 2026-05-24 | v1.1.0 |
-| [dictionary.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/dictionary.js) | `c:/Users/Owner/Documents/myproject/DogCollection/dictionary.js` | 犬種名の日本語翻訳と豆知識データベース | 2026-05-24 | v1.0.4 |
-| [index.html](file:///c:/Users/Owner/Documents/myproject/DogCollection/index.html) | `c:/Users/Owner/Documents/myproject/DogCollection/index.html` | アプリ画面レイアウト（スタート、クイズ、図鑑、結果画面） | 2026-05-24 | v1.2.1 |
-| [style.css](file:///c:/Users/Owner/Documents/myproject/DogCollection/style.css) | `c:/Users/Owner/Documents/myproject/DogCollection/style.css` | アプリデザインスタイル（配色、カード、アニメーション、ぼかし） | 2026-05-24 | v1.2.1 |
-| [app.js](file:///c:/Users/Owner/Documents/myproject/DogCollection/app.js) | `c:/Users/Owner/Documents/myproject/DogCollection/app.js` | アプリの動作ロジック（API接続、クイズ制御、図鑑制御,データ保存） | 2026-05-24 | v1.2.3 |
+| [GEMINI.md](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/GEMINI.md) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/GEMINI.md` | プロジェクト管理・開発状況記録ドキュメント | 2026-05-24 | v1.6.0 |
+| [index.html](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/index.html) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/index.html` | アプリ画面レイアウト（スタート、クイズ、図鑑、結果画面） | 2026-05-24 | v1.2.2 |
+| [style.css](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/style.css) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/style.css` | アプリデザインスタイル（配色、カード、アニメーションなど） | 2026-05-24 | v1.2.2 |
+| [app.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/app.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/app.js` | アプリのエントリーポイント（イベント設定・初期化） | 2026-05-24 | v1.6.0 |
+| [state.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/state.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/state.js` | 状態（データ）およびセーブデータの管理 | 2026-05-29 | v1.6.0 |
+| [ui.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/ui.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/ui.js` | 画面の切り替え、図鑑表示、ポップアップ表示等のUI制御 | 2026-05-29 | v1.6.0 |
+| [game.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/game.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/game.js` | クイズのルール進行、判定、スコア等のゲームロジック | 2026-05-29 | v1.6.0 |
+| [dictionary.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/dictionary.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/dictionary.js` | 犬種名の日本語翻訳と豆知識データベース | 2026-05-24 | v1.6.0 |
+| [api.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/api.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/api.js` | DogAPIとの通信および画像ロードリトライ処理 | 2026-05-30 | v1.6.0 |
 
 ---
 ## 4. 変更履歴
 コードやドキュメントの重要な変更履歴を記録します。
+
+### v1.6.0 (2026-05-30)
+- プログラムの大規模リファクタリング（モジュール化の実施）
+  - HTMLでの複数スクリプト読み込みを廃止し、ESモジュール（`type="module"`）を導入。エントリーポイントを `app.js` に一本化。
+  - グローバル変数を完全に廃止し、状態変数を `state.js` 内の `gameState` オブジェクトにカプセル化。セーブデータの読み込み時に破損防止のバリデーションを追加。
+  - `game.js` からインターネット通信処理を `api.js` へ、図鑑などのUI描画処理を `ui.js` へそれぞれ移譲・分離。`game.js` を純粋なゲームロジックモジュールとしてスリム化（約1,300行から約500行へ削減）。
+  - 各JSファイル間の依存関係を `import` / `export` によって明示的かつクリーンに整理。
+  - 自動テスト（E2Eテスト）との互換性を維持するため、デバッグ・テスト用のグローバルブリッジ（`window` エイリアス）を導入。
 
 ### v1.5.0 (2026-05-30)
 - 画像の事前プリロード（先読み）機能と開始前「じゅんび画面」の導入
