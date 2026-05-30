@@ -81,6 +81,9 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
     await expect(page.locator('#start-screen')).toHaveClass(/hidden/);
     await expect(page.locator('#quiz-screen')).not.toHaveClass(/hidden/);
 
+    // 準備画面（先読み・カウントダウン）が終了してメインクイズが始まるのを待つ
+    await expect(page.locator('#quiz-main-contents')).not.toHaveClass(/hidden/, { timeout: 10000 });
+
     // クイズ画面の進行状況テキストが表示されていることを確認
     await expect(page.locator('#quiz-progress-text')).toContainText('第 1 問');
 
@@ -92,6 +95,9 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
     // クイズを開始する
     await page.locator('#btn-start-game').click();
     await expect(page.locator('#quiz-screen')).not.toHaveClass(/hidden/);
+
+    // 準備画面が終了するのを待つ
+    await expect(page.locator('#quiz-main-contents')).not.toHaveClass(/hidden/, { timeout: 10000 });
 
     // 確認ダイアログ（window.confirm）がポップアップしたときに「OK」を押すようにPlaywrightにリスナーを登録
     page.once('dialog', async dialog => {
@@ -134,6 +140,9 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
     await page.locator('#btn-start-game').click();
     await expect(page.locator('#quiz-screen')).not.toHaveClass(/hidden/);
 
+    // 準備画面が終了するのを待つ
+    await expect(page.locator('#quiz-main-contents')).not.toHaveClass(/hidden/, { timeout: 10000 });
+
     // 3. おやつ（ヒント）ボタンを 2回 クリック
     const btnHint = page.locator('#btn-quiz-hint');
     await expect(btnHint).toBeVisible();
@@ -142,8 +151,8 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
     await btnHint.click();
     await expect(page.locator('#hint-status-text')).toContainText('ヒント残り2回');
 
-    // ぼかしの強さが「blur-level-2」（2回目のぼかし緩和）になっていることを確認
-    await expect(page.locator('#quiz-dog-image')).toHaveClass(/blur-level-2/);
+    // ぼかしは廃止されたため、常に「blur-level-0」（ぼかしなし）であることを確認
+    await expect(page.locator('#quiz-dog-image')).toHaveClass(/blur-level-0/);
 
     // 4. 現在の問題の正解キーをブラウザのグローバル変数から取得
     const correctKey = await page.evaluate(() => currentQuestionDog.key);
@@ -156,9 +165,15 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
   });
 
   test('6. 【複雑】2択タイムアタックのペナルティ計算検証', async ({ page }) => {
+    // タイムアウト時間を60秒に延長（準備演出や複数問題の解答時間があるため）
+    test.setTimeout(60000);
+
     // 1. 2択タイムアタックを開始
     await page.locator('#btn-start-timeattack').click();
     await expect(page.locator('#quiz-screen')).not.toHaveClass(/hidden/);
+
+    // 準備画面が終了するのを待つ
+    await expect(page.locator('#quiz-main-contents')).not.toHaveClass(/hidden/, { timeout: 10000 });
 
     // 10問分クリックを繰り返してゲームを完走させる
     for (let i = 0; i < 10; i++) {
@@ -218,9 +233,16 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
     // 5. 4択クイズを開始し、最初の問題を強制的に「ビーグル」に書き換えて正解させる
     await page.locator('#btn-start-game').click();
     
+    // 準備画面が終了するのを待つ
+    await expect(page.locator('#quiz-main-contents')).not.toHaveClass(/hidden/, { timeout: 10000 });
+
     // クイズ開始直後に、お題リストの1問目を「beagle」に書き換えて再描画
     await page.evaluate(() => {
-      currentQuizList[currentQuestionIndex] = 'beagle';
+      preloadedQuestions[currentQuestionIndex] = {
+        correctKey: 'beagle',
+        choices: ['beagle', 'chihuahua', 'shiba', 'poodle-toy'],
+        imageUrl: 'https://images.dog.ceo/breeds/beagle/n02088024_2111.jpg'
+      };
       showQuestion();
     });
 

@@ -58,6 +58,17 @@ const elLoadingLeft = document.getElementById('loading-left');
 const elLoadingRight = document.getElementById('loading-right');
 const elFeedbackLeft = document.getElementById('feedback-left');
 const elFeedbackRight = document.getElementById('feedback-right');
+// 準備画面用の要素
+const elPrepArea = document.getElementById('prep-area');
+const elPrepTargetBox = document.getElementById('prep-target-box');
+const elPrepTargetDogName = document.getElementById('prep-target-dog-name');
+const elPrepTargetImage = document.getElementById('prep-target-image');
+const elPrepTargetLoading = document.getElementById('prep-target-loading');
+const elPrepGeneralBox = document.getElementById('prep-general-box');
+const elPrepProgressBar = document.getElementById('prep-progress-bar');
+const elPrepStatusText = document.getElementById('prep-status-text');
+const elPrepCountdown = document.getElementById('prep-countdown');
+const elQuizMainContents = document.getElementById('quiz-main-contents');
 
 // 結果画面の要素
 const elResult4ChoicesBox = document.getElementById('result-4choices-box');
@@ -106,5 +117,16 @@ function showLoading(isLoading) {
     elLoading.classList.remove('hidden');
   } else {
     elLoading.classList.add('hidden');
+  }
+}
+
+// 準備画面とクイズメインの表示切り替え
+function showPrepScreen(showPrep) {
+  if (showPrep) {
+    elPrepArea.classList.remove('hidden');
+    elQuizMainContents.classList.add('hidden');
+  } else {
+    elPrepArea.classList.add('hidden');
+    elQuizMainContents.classList.remove('hidden');
   }
 }

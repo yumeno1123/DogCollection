@@ -19,7 +19,10 @@ window.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
   // 画面遷移：スタート画面 -> クイズ画面（各ゲームモードに対応） (game.js)
   elBtnStart.addEventListener('click', () => startQuizGame('4choices'));
-  elBtnStartTimeAttack.addEventListener('click', () => startQuizGame('timeattack'));
+  elBtnStartTimeAttack.addEventListener('click', () => {
+    targetBreedKeyFromDict = null; // 通常の開始時は指定を解除
+    startQuizGame('timeattack');
+  });
   elBtnStartEndless.addEventListener('click', () => startQuizGame('endless'));
 
   // 画面遷移：クイズ画面 -> スタート画面（クイズを中断） (game.js)

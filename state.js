@@ -44,6 +44,12 @@ let nextQuestionCache = {
   loaded: false
 };
 
+// 事前ロード（キャッシュ）済みの問題リスト
+let preloadedQuestions = [];
+
+// 図鑑から選択されて開始した2択モードのお題犬種キー
+let targetBreedKeyFromDict = null;
+
 // 今回のクイズで「新しく段階が上がった犬種」を記録する配列（結果画面用）
 let newlyUnlockedDogs = [];
 

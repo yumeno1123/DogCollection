@@ -91,84 +91,121 @@
 
       <!-- ================= QUIZ SCREEN (クイズ画面) ================= -->
       <section id="quiz-screen" class="app-screen hidden">
-        <!-- 進行状況エリア -->
-        <div class="quiz-info-bar">
-          <div id="quiz-progress-text">第 1 問 / 10問中</div>
-          <div id="quiz-timer-text" class="hidden">タイム: 0.00 秒</div>
-          <div id="quiz-score-text">せいかい：0</div>
-        </div>
-
-        <!-- 制限時間タイマーバー（エンドレス用） -->
-        <div id="timer-bar-container" class="timer-bar-container hidden">
-          <div id="timer-bar" class="timer-bar"></div>
-        </div>
-        
-        <!-- クイズのメインカード -->
-        <div class="card quiz-card">
-          <!-- 4択クイズ用の犬の画像表示コンテナ -->
-          <div id="four-choices-image-area" class="dog-image-container">
-            <img id="quiz-dog-image" src="" alt="クイズ用の犬の画像" class="blur-easy">
-            <!-- ロード中の肉球てくてく表示 -->
-            <div id="loading-indicator" class="loading-overlay hidden">
-              <div class="paw-loader">
-                <div class="paw-icon">🐾</div>
-                <div class="loading-text">犬の写真をよみこみ中...</div>
+        <!-- ゲーム開始前の準備・先読み画面 -->
+        <div id="prep-area" class="card prep-card">
+          <div class="prep-title">🐾 ゲームじゅんび中 🐾</div>
+          
+          <!-- タイムアタック用のターゲット予告表示 -->
+          <div id="prep-target-box" class="prep-target-box hidden">
+            <p class="prep-subtitle">今回のターゲット（さがす犬種）</p>
+            <div id="prep-target-dog-name" class="prep-target-dog-name">？？？</div>
+            <div class="prep-target-image-wrapper">
+              <img id="prep-target-image" src="" alt="ターゲットの見本">
+              <div id="prep-target-loading" class="loading-overlay">
+                <div class="paw-loader">
+                  <div class="paw-icon">🐾</div>
+                </div>
               </div>
             </div>
-            <!-- テキストヒント表示用のエリア -->
-            <div id="text-hint-box" class="hint-message hidden">
-              💡 ヒント：この犬種は「」から始まるよ！
-            </div>
+            <p class="prep-instruction">この犬種の特徴をおぼえておこう！</p>
           </div>
           
-          <!-- ヒント（おやつ）ボタン -->
-          <div id="hint-action-area" class="hint-action-area">
-            <button id="btn-quiz-hint" class="btn btn-accent">
-              <span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！
-            </button>
-            <p id="hint-status-text" class="hint-sub-text">※ヒントを使うと、もらえるポイントがすこし減るよ</p>
-          </div>
-          
-          <!-- 4択の回答ボタンエリア -->
-          <div id="four-choices-options-area" class="quiz-options-grid">
-            <button id="opt-1" class="btn btn-option">選択肢 1</button>
-            <button id="opt-2" class="btn btn-option">選択肢 2</button>
-            <button id="opt-3" class="btn btn-option">選択肢 3</button>
-            <button id="opt-4" class="btn btn-option">選択肢 4</button>
+          <!-- 4択/エンドレス用の一般ローディング表示 -->
+          <div id="prep-general-box" class="prep-general-box">
+            <div class="dog-illustration">🐶</div>
+            <p class="prep-instruction">まもなくゲームがはじまるよ。じゅんびしてね！</p>
           </div>
 
-          <!-- ================= 2択画像選択ゲームエリア ================= -->
-          <div id="two-choices-area" class="two-choices-area hidden">
-            <div class="two-choices-title-box">
-              🐾 <span id="two-choices-dog-name" class="two-choices-dog-name">？？？</span> はどっち？
+          <!-- プログレスバー（画像の読み込み進捗） -->
+          <div class="prep-progress-container">
+            <div id="prep-progress-bar" class="prep-progress-bar" style="width: 0%;"></div>
+          </div>
+          <div id="prep-status-text" class="prep-status-text">画像準備中 (0%) ... 🐾</div>
+          
+          <!-- カウントダウン表示 -->
+          <div id="prep-countdown" class="prep-countdown hidden">3</div>
+        </div>
+
+        <!-- 進行状況エリアとクイズメインカード -->
+        <div id="quiz-main-contents" class="hidden">
+          <div class="quiz-info-bar">
+            <div id="quiz-progress-text">第 1 問 / 10問中</div>
+            <div id="quiz-timer-text" class="hidden">タイム: 0.00 秒</div>
+            <div id="quiz-score-text">せいかい：0</div>
+          </div>
+
+          <!-- 制限時間タイマーバー（エンドレス用） -->
+          <div id="timer-bar-container" class="timer-bar-container hidden">
+            <div id="timer-bar" class="timer-bar"></div>
+          </div>
+          
+          <!-- クイズのメインカード -->
+          <div class="card quiz-card">
+            <!-- 4択クイズ用の犬の画像表示コンテナ -->
+            <div id="four-choices-image-area" class="dog-image-container">
+              <img id="quiz-dog-image" src="" alt="クイズ用の犬の画像" class="blur-easy">
+              <!-- ロード中の肉球てくてく表示 -->
+              <div id="loading-indicator" class="loading-overlay hidden">
+                <div class="paw-loader">
+                  <div class="paw-icon">🐾</div>
+                  <div class="loading-text">犬の写真をよみこみ中...</div>
+                </div>
+              </div>
+              <!-- テキストヒント表示用のエリア -->
+              <div id="text-hint-box" class="hint-message hidden">
+                💡 ヒント：この犬種は「」から始まるよ！
+              </div>
             </div>
-            <div class="two-choices-grid">
-              <button id="choice-left" class="choice-card btn-choice">
-                <div class="choice-image-box">
-                  <img id="img-choice-left" src="" alt="選択肢 左">
-                  <div id="loading-left" class="loading-overlay hidden">
-                    <div class="paw-loader">
-                      <div class="paw-icon" style="font-size:1.8rem;">🐾</div>
-                    </div>
-                  </div>
-                  <!-- 〇×フィードバック表示用 -->
-                  <div id="feedback-left" class="choice-feedback hidden"></div>
-                </div>
-                <span class="choice-label">A</span>
+            
+            <!-- ヒント（おやつ）ボタン -->
+            <div id="hint-action-area" class="hint-action-area">
+              <button id="btn-quiz-hint" class="btn btn-accent">
+                <span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！
               </button>
-              <button id="choice-right" class="choice-card btn-choice">
-                <div class="choice-image-box">
-                  <img id="img-choice-right" src="" alt="選択肢 右">
-                  <div id="loading-right" class="loading-overlay hidden">
-                    <div class="paw-loader">
-                      <div class="paw-icon" style="font-size:1.8rem;">🐾</div>
+              <p id="hint-status-text" class="hint-sub-text">※ヒントを使うと、もらえるポイントがすこし減るよ</p>
+            </div>
+            
+            <!-- 4択の回答ボタンエリア -->
+            <div id="four-choices-options-area" class="quiz-options-grid">
+              <button id="opt-1" class="btn btn-option">選択肢 1</button>
+              <button id="opt-2" class="btn btn-option">選択肢 2</button>
+              <button id="opt-3" class="btn btn-option">選択肢 3</button>
+              <button id="opt-4" class="btn btn-option">選択肢 4</button>
+            </div>
+
+            <!-- ================= 2択画像選択ゲームエリア ================= -->
+            <div id="two-choices-area" class="two-choices-area hidden">
+              <div class="two-choices-title-box">
+                🐾 <span id="two-choices-dog-name" class="two-choices-dog-name">？？？</span> はどっち？
+              </div>
+              <div class="two-choices-grid">
+                <button id="choice-left" class="choice-card btn-choice">
+                  <div class="choice-image-box">
+                    <img id="img-choice-left" src="" alt="選択肢 左">
+                    <div id="loading-left" class="loading-overlay hidden">
+                      <div class="paw-loader">
+                        <div class="paw-icon" style="font-size:1.8rem;">🐾</div>
+                      </div>
                     </div>
+                    <!-- 〇×フィードバック表示用 -->
+                    <div id="feedback-left" class="choice-feedback hidden"></div>
                   </div>
-                  <!-- 〇×フィードバック表示用 -->
-                  <div id="feedback-right" class="choice-feedback hidden"></div>
-                </div>
-                <span class="choice-label">B</span>
-              </button>
+                  <span class="choice-label">A</span>
+                </button>
+                <button id="choice-right" class="choice-card btn-choice">
+                  <div class="choice-image-box">
+                    <img id="img-choice-right" src="" alt="選択肢 右">
+                    <div id="loading-right" class="loading-overlay hidden">
+                      <div class="paw-loader">
+                        <div class="paw-icon" style="font-size:1.8rem;">🐾</div>
+                      </div>
+                    </div>
+                    <!-- 〇×フィードバック表示用 -->
+                    <div id="feedback-right" class="choice-feedback hidden"></div>
+                  </div>
+                  <span class="choice-label">B</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

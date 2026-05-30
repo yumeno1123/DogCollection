@@ -371,7 +371,29 @@ function getDogData(breedKey) {
   };
 }
 
+// 見た目が似ている犬種のグループリスト（難易度「むずかしい」の時、不正解の選択肢に優先して選ばれます）
+const SIMILAR_DOG_GROUPS = [
+  // 日本犬・立ち耳・スピッツ系
+  ["shiba", "akita", "spitz-japanese", "samoyed", "husky-siberian"],
+  // レトリバー系
+  ["retriever-golden", "retriever-labrador", "retriever-flatcoated", "retriever-curly", "retriever-chesapeake"],
+  // 鼻ペチャ（短頭種）系
+  ["pug", "bulldog-french", "bulldog-english", "bulldog-boston", "pekinese", "shihtzu"],
+  // 胴長短足系
+  ["dachshund", "corgi-cardigan", "corgi-pembroke", "corgi"],
+  // 白・ふわふわ系小型犬
+  ["pomeranian", "maltese", "spitz-japanese", "samoyed"],
+  // テリア・シュナウザー（ひげ・飾り毛）系
+  ["schnauzer-miniature", "schnauzer-giant", "terrier-yorkshire", "cairn", "terrier-cairn", "terrier-westhighland", "terrier-scottish", "terrier-russell"],
+  // 耳が大きい・飾り毛系小型犬
+  ["papillon", "chihuahua", "spaniel-japanese"],
+  // コリー・シェパード牧羊犬系
+  ["collie-border", "germanshepherd", "australian-shepherd"],
+  // 垂れ耳中型・猟犬系
+  ["beagle", "basset", "coonhound", "spaniel-cocker", "dalmatian"]
+];
+
 // ブラウザ（HTML）側から呼び出せるようにモジュールまたはグローバル変数として公開する
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { POPULAR_DOGS, ALL_DOGS_DICTIONARY, getDogData };
+  module.exports = { POPULAR_DOGS, ALL_DOGS_DICTIONARY, getDogData, SIMILAR_DOG_GROUPS };
 }

@@ -34,8 +34,183 @@ function quitQuiz() {
 
 // ================= クイズゲームの開始処理 ================= //
 
+// 不正解の選択肢候補を難易度を考慮して取得する関数
+function getIncorrectChoices(correctKey, count) {
+  let allCandidates = [];
+  if (quizMode === 'popular') {
+    allCandidates = Object.keys(POPULAR_DOGS);
+  } else {
+    allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
+  }
+
+  // 自分自身を除外
+  let candidates = allCandidates.filter(key => key !== correctKey);
+
+  // 難易度が「むずかしい」の場合は、類似犬種を優先的に選ぶ
+  if (difficulty === 'hard') {
+    let similarBreeds = [];
+    SIMILAR_DOG_GROUPS.forEach(group => {
+      if (group.includes(correctKey)) {
+        group.forEach(breed => {
+          if (breed !== correctKey && !similarBreeds.includes(breed) && candidates.includes(breed)) {
+            similarBreeds.push(breed);
+          }
+        });
+      }
+    });
+
+    if (similarBreeds.length > 0) {
+      shuffleArray(similarBreeds);
+      const otherBreeds = candidates.filter(key => !similarBreeds.includes(key));
+      shuffleArray(otherBreeds);
+      candidates = [...similarBreeds, ...otherBreeds];
+    } else {
+      shuffleArray(candidates);
+    }
+  } else {
+    shuffleArray(candidates);
+  }
+
+  return candidates.slice(0, count);
+}
+
+// 他のクイズで使われていない代替犬種を取得する
+function getAlternativeBreed(excludeList) {
+  let allCandidates = [];
+  if (quizMode === 'popular') {
+    allCandidates = Object.keys(POPULAR_DOGS);
+  } else {
+    allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
+  }
+  const available = allCandidates.filter(key => !excludeList.includes(key));
+  shuffleArray(available);
+  return available.length > 0 ? available[0] : allCandidates[0];
+}
+
+// 4択クイズの選択肢生成（プリロード用）
+function setupChoicesForPreload(correctKey) {
+  const incorrectChoices = getIncorrectChoices(correctKey, 3);
+  const choices = [correctKey, ...incorrectChoices];
+  shuffleArray(choices);
+  return choices;
+}
+
+// クイズの画像とデータを一括してプリロードする関数
+async function preloadQuizData(gameType, count, onProgress) {
+  preloadedQuestions = [];
+  let loadedCount = 0;
+  const totalCount = gameType === 'endless' ? 20 : count; // エンドレスは初期20問分
+
+  // 1. 各問のデータを決定する
+  const prepList = [];
+  
+  if (gameType === '4choices') {
+    for (let i = 0; i < count; i++) {
+      const correctKey = currentQuizList[i];
+      const choices = setupChoicesForPreload(correctKey);
+      prepList.push({
+        correctKey,
+        choices
+      });
+    }
+  } else {
+    // 2択ゲーム
+    for (let i = 0; i < totalCount; i++) {
+      const correctKey = currentQuizList[i];
+      const wrongKey = getIncorrectChoices(correctKey, 1)[0];
+      const isLeftCorrect = Math.random() < 0.5;
+      prepList.push({
+        correctKey,
+        wrongKey,
+        isLeftCorrect
+      });
+    }
+  }
+
+  // 2. 画像のロード処理を非同期並列で実行
+  const promises = prepList.map(async (item, index) => {
+    try {
+      if (gameType === '4choices') {
+        const imageUrl = await loadDogImageWithRetry(item.correctKey);
+        item.imageUrl = imageUrl;
+      } else {
+        const [urlLeft, urlRight] = await Promise.all([
+          loadDogImageWithRetry(item.isLeftCorrect ? item.correctKey : item.wrongKey),
+          loadDogImageWithRetry(item.isLeftCorrect ? item.wrongKey : item.correctKey)
+        ]);
+        item.urlLeft = urlLeft;
+        item.urlRight = urlRight;
+      }
+      loadedCount++;
+      if (onProgress) {
+        onProgress(loadedCount, totalCount);
+      }
+      return item;
+    } catch (err) {
+      console.warn(`プリロード失敗。別の画像でリトライまたは差し替えます:`, err);
+      let success = false;
+      
+      // 失敗した場合は、別の画像や別犬種でロードを試みる
+      for (let retry = 0; retry < 5; retry++) {
+        try {
+          if (gameType === '4choices') {
+            const newBreed = getAlternativeBreed(currentQuizList);
+            const imageUrl = await loadDogImageWithRetry(newBreed);
+            item.correctKey = newBreed;
+            item.choices = setupChoicesForPreload(newBreed);
+            item.imageUrl = imageUrl;
+            // リストの該当キーも更新しておく
+            currentQuizList[index] = newBreed;
+          } else {
+            if (activeGameType === 'timeattack') {
+              // タイムアタックはターゲット犬種が固定。ハズレの犬種を変更してロードを試みる
+              const newWrong = getIncorrectChoices(item.correctKey, 1)[0];
+              item.wrongKey = newWrong;
+              const [urlLeft, urlRight] = await Promise.all([
+                loadDogImageWithRetry(item.isLeftCorrect ? item.correctKey : newWrong),
+                loadDogImageWithRetry(item.isLeftCorrect ? newWrong : item.correctKey)
+              ]);
+              item.urlLeft = urlLeft;
+              item.urlRight = urlRight;
+            } else {
+              // エンドレスの場合は問題ごと差し替えてOK
+              const newBreed = getAlternativeBreed(currentQuizList);
+              const newWrong = getIncorrectChoices(newBreed, 1)[0];
+              item.correctKey = newBreed;
+              item.wrongKey = newWrong;
+              const [urlLeft, urlRight] = await Promise.all([
+                loadDogImageWithRetry(item.isLeftCorrect ? newBreed : newWrong),
+                loadDogImageWithRetry(item.isLeftCorrect ? newWrong : newBreed)
+              ]);
+              item.urlLeft = urlLeft;
+              item.urlRight = urlRight;
+              currentQuizList[index] = newBreed;
+            }
+          }
+          success = true;
+          break;
+        } catch (retryErr) {
+          console.warn(`代替プリロード失敗、再試行します:`, retryErr);
+        }
+      }
+      
+      if (!success) {
+        throw new Error("プリロードの代替リトライがすべて失敗しました");
+      }
+      
+      loadedCount++;
+      if (onProgress) {
+        onProgress(loadedCount, totalCount);
+      }
+      return item;
+    }
+  });
+
+  preloadedQuestions = await Promise.all(promises);
+}
+
 // クイズゲームを開始する
-function startQuizGame(gameType) {
+async function startQuizGame(gameType, targetBreedKey = null) {
   activeGameType = gameType || '4choices';
 
   // 1. 設定値（出題モード・難易度）をラジオボタンから取得
@@ -61,10 +236,98 @@ function startQuizGame(gameType) {
 
   // キャッシュの初期化
   nextQuestionCache.loaded = false;
+  preloadedQuestions = [];
 
-  // 2. ゲームモードに応じたUIの切り替えと初期化
+  // 2. 出題リストの作成
   if (activeGameType === '4choices') {
-    // 4択クイズ用UI
+    generateQuizList(10);
+  } else if (activeGameType === 'timeattack') {
+    // 引数で犬種指定があるか、もしくは図鑑からの指定があるか確認
+    const finalTargetBreed = targetBreedKey || targetBreedKeyFromDict;
+    if (finalTargetBreed) {
+      currentQuizList = Array(10).fill(finalTargetBreed);
+    } else {
+      generateQuizList(10, true); // ランダムに1種選定
+    }
+  } else {
+    // エンドレス
+    generateQuizList(100);
+  }
+
+  // 3. UIの準備画面のセットアップ
+  switchScreen('quiz-screen');
+  showPrepScreen(true);
+
+  // ターゲット予告表示の切り替え
+  if (activeGameType === 'timeattack') {
+    elPrepTargetBox.classList.remove('hidden');
+    elPrepGeneralBox.classList.add('hidden');
+    
+    const targetBreed = currentQuizList[0];
+    const targetData = getDogData(targetBreed);
+    elPrepTargetDogName.textContent = targetData.japanese;
+    elPrepTargetLoading.classList.remove('hidden');
+    elPrepTargetImage.src = "";
+    
+    // ターゲットの画像をAPIから取得して見本として表示
+    try {
+      const sampleUrl = await fetchDogImage(targetBreed);
+      elPrepTargetImage.src = sampleUrl;
+    } catch (err) {
+      console.error("見本画像の取得に失敗しました:", err);
+      // 代替画像
+      elPrepTargetImage.src = "https://images.dog.ceo/breeds/beagle/n02088024_2111.jpg";
+    } finally {
+      elPrepTargetLoading.classList.add('hidden');
+    }
+  } else {
+    elPrepTargetBox.classList.add('hidden');
+    elPrepGeneralBox.classList.remove('hidden');
+  }
+
+  // プログレスバーの初期化
+  elPrepProgressBar.style.width = '0%';
+  elPrepStatusText.textContent = "画像準備中 (0%) ... 🐾";
+
+  // 4. 画像のプリロード（最低3秒間待機）
+  const sleepPromise = new Promise(resolve => setTimeout(resolve, 3000));
+  const updateProgress = (loaded, total) => {
+    const percent = Math.round((loaded / total) * 100);
+    elPrepProgressBar.style.width = `${percent}%`;
+    elPrepStatusText.textContent = `画像を準備しています... (${percent}%) 🐾`;
+  };
+
+  try {
+    const totalToLoad = activeGameType === 'endless' ? 20 : 10;
+    await Promise.all([
+      preloadQuizData(activeGameType, totalToLoad, updateProgress),
+      sleepPromise
+    ]);
+  } catch (err) {
+    console.error("プリロード処理で重大なエラーが発生しました:", err);
+  }
+
+  // 5. カウントダウン演出
+  elPrepCountdown.classList.remove('hidden');
+  elPrepProgressBar.parentElement.classList.add('hidden');
+  elPrepStatusText.classList.add('hidden');
+
+  for (let sec = 3; sec > 0; sec--) {
+    elPrepCountdown.textContent = sec;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  elPrepCountdown.textContent = "スタート！🐾";
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  elPrepCountdown.classList.add('hidden');
+  elPrepProgressBar.parentElement.classList.remove('hidden');
+  elPrepStatusText.classList.remove('hidden');
+
+  // 準備画面を隠してゲーム本編を表示
+  showPrepScreen(false);
+
+  // 6. ゲームモードに応じたUI切り替えと開始
+  if (activeGameType === '4choices') {
     elFourChoicesImageArea.classList.remove('hidden');
     elFourChoicesOptionsArea.classList.remove('hidden');
     elTwoChoicesArea.classList.add('hidden');
@@ -72,29 +335,18 @@ function startQuizGame(gameType) {
     elTimerBarContainer.classList.add('hidden');
     elQuizScore.classList.remove('hidden');
 
-    // 10問の出題リストを作成
-    generateQuizList(10);
-
-    // 3. クイズ画面に切り替え、最初の問題を表示
-    switchScreen('quiz-screen');
     showQuestion();
   } else {
-    // 2択ゲーム（タイムアタック or エンドレス）用UI
     elFourChoicesImageArea.classList.add('hidden');
     elFourChoicesOptionsArea.classList.add('hidden');
     elHintActionArea.classList.add('hidden');
     elTwoChoicesArea.classList.remove('hidden');
-    elQuizScore.classList.add('hidden'); // スコア表記は隠す
+    elQuizScore.classList.add('hidden');
 
     if (activeGameType === 'timeattack') {
-      // タイムアタック用のタイマー表示をオン
       elQuizTimer.classList.remove('hidden');
       elTimerBarContainer.classList.add('hidden');
       elQuizTimer.textContent = "タイム: 0.00 秒";
-
-      // 10問の出題リストを作成（1つの犬種に固定）
-      generateQuizList(10, true);
-      switchScreen('quiz-screen');
 
       // タイムアタック開始（50ミリ秒ごとに経過時間を画面更新）
       timeAttackStartTime = Date.now();
@@ -106,13 +358,9 @@ function startQuizGame(gameType) {
 
       showQuestion2Choices();
     } else {
-      // エンドレス用のタイムバー表示をオン
+      // エンドレス
       elQuizTimer.classList.add('hidden');
       elTimerBarContainer.classList.remove('hidden');
-
-      // 多めに100問のリストを作っておく
-      generateQuizList(100);
-      switchScreen('quiz-screen');
 
       showQuestion2Choices();
     }
@@ -201,43 +449,33 @@ async function showQuestion() {
   elQuizProgress.textContent = `第 ${currentQuestionIndex + 1} 問 / 10問中`;
   elQuizScore.textContent = `スコア：${currentPoints} 点 / せいかい：${currentScore}問`;
 
-  // 現在の問題の犬種キー
-  const dogKey = currentQuizList[currentQuestionIndex];
+  // プリロードされたデータを取得
+  const qData = preloadedQuestions[currentQuestionIndex];
+  const dogKey = qData.correctKey;
   currentQuestionDog = getDogData(dogKey);
-  currentQuestionDog.key = dogKey; // キー自体も参照できるように保存
+  currentQuestionDog.key = dogKey;
 
-  // 難易度に応じたぼかしクラスの適用とヒント表示制御
-  elQuizDogImg.className = ''; // クラス初期化
+  // 難易度に関わらず、ぼかしは常に無し（blur-level-0）
+  elQuizDogImg.className = '';
+  elQuizDogImg.classList.add('blur-level-0');
+
   if (difficulty === 'hard') {
-    elQuizDogImg.classList.add('blur-level-4'); // 強いぼかし (25px)
     elHintActionArea.classList.remove('hidden'); // むずかしいモードではヒントを表示する
     elBtnHint.disabled = false;
     elBtnHint.innerHTML = '<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り4回)';
-    elHintStatus.textContent = "※おやつをあげると写真が見えやすくなるよ";
+    elHintStatus.textContent = "※おやつをあげると選択肢が減ったり頭文字がわかるよ";
   } else {
-    elQuizDogImg.classList.add('blur-level-0'); // ぼかしなし
     elHintActionArea.classList.add('hidden');    // かんたんモードではヒントを表示しない
     elBtnHint.disabled = true;
     elHintStatus.textContent = "";
   }
 
-  // DogAPIから画像の取得（非同期処理）
-  showLoading(true);
-  try {
-    // リトライ機能付きで画像をロード
-    currentDogImageUrl = await loadDogImageWithRetry(dogKey);
-    elQuizDogImg.src = currentDogImageUrl;
-  } catch (error) {
-    console.error("画像の取得に完全に失敗しました。別のお題でやり直します:", error);
-    // お題を別の犬種に差し替えてやり直す
-    regenerateQuestion4Choices();
-    return;
-  } finally {
-    showLoading(false);
-  }
+  // キャッシュ済みの画像URLを設定
+  currentDogImageUrl = qData.imageUrl;
+  elQuizDogImg.src = currentDogImageUrl;
 
-  // 4つの選択肢を生成する
-  setupQuizOptions(dogKey);
+  // 選択肢を設定する
+  setupQuizOptionsFromPreload(qData.choices);
 }
 
 // DogAPIからランダム画像URLを取得する
@@ -262,28 +500,8 @@ async function fetchDogImage(cleanKey) {
   return data.message; // 画像URLを返す
 }
 
-// 4択ボタンの中身をセットアップする
-function setupQuizOptions(correctKey) {
-  // 今回のモードで出題可能な全犬種キーリストをコピー
-  let allCandidates = [];
-  if (quizMode === 'popular') {
-    allCandidates = Object.keys(POPULAR_DOGS);
-  } else {
-    allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
-  }
-
-  // ハズレの選択肢候補（正解キーを除いたもの）
-  const incorrectCandidates = allCandidates.filter(key => key !== correctKey);
-  shuffleArray(incorrectCandidates);
-
-  // ハズレを3つ選ぶ
-  const wrongAnswers = incorrectCandidates.slice(0, 3);
-
-  // 正解1つとハズレ3つの配列を作り、並び替える
-  const choices = [correctKey, ...wrongAnswers];
-  shuffleArray(choices);
-
-  // ボタンに選択肢テキストとデータ（キー）をセット
+// 4択ボタンの中身をセットアップする（プリロードされた選択肢を使用）
+function setupQuizOptionsFromPreload(choices) {
   elOptions.forEach((btn, index) => {
     const choiceKey = choices[index];
     const dogData = getDogData(choiceKey);
@@ -417,66 +635,39 @@ function preloadImage(url) {
   });
 }
 
-// 次の問題のデータを非同期で先読みし、キャッシュする関数
-async function prefetchNextQuestion(nextIndex) {
-  nextQuestionCache.loaded = false;
-
-  // 出題リストの上限に達した場合は処理を分岐
-  if (nextIndex >= currentQuizList.length) {
-    if (activeGameType === 'endless') {
-      // エンドレス用のリストを補填
-      generateQuizList(100);
-      nextIndex = 0;
-    } else {
-      // タイムアタックは10問で終了のため先読みしない
-      return;
-    }
-  }
-
-  const correctKey = currentQuizList[nextIndex];
+// エンドレスモード用のキャッシュ補充処理
+async function supplementEndlessCache() {
+  if (preloadedQuestions.length >= 15) return;
   
-  // 不正解の犬種キーをランダム決定
-  let allCandidates = [];
-  if (quizMode === 'popular') {
-    allCandidates = Object.keys(POPULAR_DOGS);
-  } else {
-    allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
-  }
-  const incorrectCandidates = allCandidates.filter(key => key !== correctKey);
-  shuffleArray(incorrectCandidates);
-  const wrongKey = incorrectCandidates[0];
-
-  const isLeftCorrect = Math.random() < 0.5;
-
-  nextQuestionCache.correctKey = correctKey;
-  nextQuestionCache.wrongKey = wrongKey;
-  nextQuestionCache.isLeftCorrect = isLeftCorrect;
-
-  let urlLeft = "";
-  let urlRight = "";
-
-  try {
-    const results = await Promise.all([
-      loadDogImageWithRetry(isLeftCorrect ? correctKey : wrongKey),
-      loadDogImageWithRetry(isLeftCorrect ? wrongKey : correctKey)
-    ]);
-    urlLeft = results[0];
-    urlRight = results[1];
-  } catch (error) {
-    console.error("先読み画像のロードに完全に失敗しました。この問題を差し替えます:", error);
-    nextQuestionCache.loaded = false;
-
-    if (activeGameType === 'timeattack') {
-      regenerateTimeAttackDog(correctKey);
-    } else {
-      replaceQuizListItem(nextIndex);
+  const needed = 20 - preloadedQuestions.length;
+  
+  for (let i = 0; i < needed; i++) {
+    // 補充用のインデックスを決定
+    const nextIndex = currentQuestionIndex + preloadedQuestions.length + 1;
+    if (nextIndex >= currentQuizList.length) {
+      generateQuizList(100);
     }
-    return;
+    
+    const correctKey = currentQuizList[nextIndex % currentQuizList.length];
+    const wrongKey = getIncorrectChoices(correctKey, 1)[0];
+    const isLeftCorrect = Math.random() < 0.5;
+    
+    try {
+      const [urlLeft, urlRight] = await Promise.all([
+        loadDogImageWithRetry(isLeftCorrect ? correctKey : wrongKey),
+        loadDogImageWithRetry(isLeftCorrect ? wrongKey : correctKey)
+      ]);
+      preloadedQuestions.push({
+        correctKey,
+        wrongKey,
+        urlLeft,
+        urlRight,
+        isLeftCorrect
+      });
+    } catch (err) {
+      console.warn("バックグラウンドでのキャッシュ補充に失敗しました:", err);
+    }
   }
-
-  nextQuestionCache.urlLeft = urlLeft;
-  nextQuestionCache.urlRight = urlRight;
-  nextQuestionCache.loaded = true;
 }
 
 // 2択ゲームの1問を表示する
@@ -486,7 +677,7 @@ async function showQuestion2Choices() {
   // 左右のボタンのスタイル初期化と有効化
   [elChoiceLeft, elChoiceRight].forEach(btn => {
     btn.classList.remove('correct', 'incorrect');
-    btn.disabled = true; // 画像読み込み完了まで一時的に無効化
+    btn.disabled = false;
   });
 
   // 〇×フィードバック表示をリセット
@@ -503,96 +694,60 @@ async function showQuestion2Choices() {
     elQuizProgress.textContent = `連続正解: ${endlessScore} 問`;
   }
 
-  // 出題リストが上限に達した場合（エンドレス用）は再シャッフルして初期化
-  if (currentQuestionIndex >= currentQuizList.length) {
-    generateQuizList(100);
-    currentQuestionIndex = 0;
+  // プリロードキャッシュからデータを取得
+  let qData;
+  if (activeGameType === 'timeattack') {
+    qData = preloadedQuestions[currentQuestionIndex];
+  } else {
+    // エンドレスモード
+    qData = preloadedQuestions.shift(); // 先頭から取り出す
+    // 取り出したのでキャッシュ補充をバックグラウンドで開始
+    supplementEndlessCache();
   }
 
-  // 正解の犬種キー
-  const correctKey = currentQuizList[currentQuestionIndex];
+  if (!qData) {
+    console.error("プリロードキャッシュが空です！フォールバックを開始します");
+    // 万が一のための即時リロード
+    try {
+      const correctKey = currentQuizList[currentQuestionIndex % currentQuizList.length];
+      const wrongKey = getIncorrectChoices(correctKey, 1)[0];
+      const isLeftCorrect = Math.random() < 0.5;
+      const [urlLeft, urlRight] = await Promise.all([
+        loadDogImageWithRetry(isLeftCorrect ? correctKey : wrongKey),
+        loadDogImageWithRetry(isLeftCorrect ? wrongKey : correctKey)
+      ]);
+      qData = { correctKey, wrongKey, urlLeft, urlRight, isLeftCorrect };
+    } catch (e) {
+      switchScreen('start-screen');
+      return;
+    }
+  }
+
+  const correctKey = qData.correctKey;
   currentQuestionDog = getDogData(correctKey);
   currentQuestionDog.key = correctKey;
 
   // 画面のタイトルにお題の日本語名を表示
   elTwoChoicesDogName.textContent = currentQuestionDog.japanese;
 
-  let urlLeft = "";
-  let urlRight = "";
-  let isLeftCorrect = false;
-
-  // 事前ロード（キャッシュ）が有効に使えるかチェック
-  if (nextQuestionCache.loaded && nextQuestionCache.correctKey === correctKey) {
-    // キャッシュから瞬時に画像と配置を取得
-    urlLeft = nextQuestionCache.urlLeft;
-    urlRight = nextQuestionCache.urlRight;
-    isLeftCorrect = nextQuestionCache.isLeftCorrect;
-  } else {
-    // キャッシュが使えない場合は従来通りロード処理を実行
-    elLoadingLeft.classList.remove('hidden');
-    elLoadingRight.classList.remove('hidden');
-
-    // 不正解の犬種キーをランダムに1つ決定
-    let allCandidates = [];
-    if (quizMode === 'popular') {
-      allCandidates = Object.keys(POPULAR_DOGS);
-    } else {
-      allCandidates = [...new Set([...Object.keys(POPULAR_DOGS), ...Object.keys(ALL_DOGS_DICTIONARY)])];
-    }
-    const incorrectCandidates = allCandidates.filter(key => key !== correctKey);
-    shuffleArray(incorrectCandidates);
-    const wrongKey = incorrectCandidates[0];
-
-    isLeftCorrect = Math.random() < 0.5;
-
-    try {
-      const results = await Promise.all([
-        loadDogImageWithRetry(isLeftCorrect ? correctKey : wrongKey),
-        loadDogImageWithRetry(isLeftCorrect ? wrongKey : correctKey)
-      ]);
-      urlLeft = results[0];
-      urlRight = results[1];
-    } catch (error) {
-      console.error("画像の取得に完全に失敗しました。別のお題でやり直します:", error);
-      
-      if (activeGameType === 'timeattack') {
-        regenerateTimeAttackDog(correctKey);
-      } else {
-        replaceQuizListItem(currentQuestionIndex);
-        showQuestion2Choices();
-      }
-      return;
-    } finally {
-      elLoadingLeft.classList.add('hidden');
-      elLoadingRight.classList.add('hidden');
-    }
-  }
-
   // キャッシュ、または今ロードした画像を要素にセット
-  elImgChoiceLeft.src = urlLeft;
-  elImgChoiceRight.src = urlRight;
+  elImgChoiceLeft.src = qData.urlLeft;
+  elImgChoiceRight.src = qData.urlRight;
 
   // ボタンに正誤情報とキーを保存
-  elChoiceLeft.dataset.isCorrect = isLeftCorrect ? "true" : "false";
-  elChoiceRight.dataset.isCorrect = isLeftCorrect ? "false" : "true";
+  elChoiceLeft.dataset.isCorrect = qData.isLeftCorrect ? "true" : "false";
+  elChoiceRight.dataset.isCorrect = qData.isLeftCorrect ? "false" : "true";
   elChoiceLeft.dataset.key = correctKey;
   elChoiceRight.dataset.key = correctKey;
 
-  // ボタンを有効化
-  elChoiceLeft.disabled = false;
-  elChoiceRight.disabled = false;
-
   // ボタンクリック時のイベントを設定
-  elChoiceLeft.onclick = () => selectAnswer2Choices(isLeftCorrect, elChoiceLeft);
-  elChoiceRight.onclick = () => selectAnswer2Choices(!isLeftCorrect, elChoiceRight);
+  elChoiceLeft.onclick = () => selectAnswer2Choices(qData.isLeftCorrect, elChoiceLeft);
+  elChoiceRight.onclick = () => selectAnswer2Choices(!qData.isLeftCorrect, elChoiceRight);
 
   // エンドレスモードの場合は3秒カウントダウンタイマーを始動
   if (activeGameType === 'endless') {
     startEndlessTimer();
   }
-
-  // 画像が表示されたので、ただちに次の問題を先読み（バックグラウンドロード）開始
-  prefetchNextQuestion(currentQuestionIndex + 1);
 }
 
 // エンドレスモードのカウントダウンタイマーを開始する
@@ -781,19 +936,12 @@ function useHint() {
   elBtnHint.innerHTML = `<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り${4 - hintCount}回)`;
 
   if (hintCount === 1) {
-    elQuizDogImg.className = '';
-    elQuizDogImg.classList.add('blur-level-3');
-    elHintStatus.textContent = "写真が少しだけ見えてきたよ！(ヒント残り3回)";
+    elHintStatus.textContent = "おやつを喜んで食べているよ！(ヒント残り3回)";
   } 
   else if (hintCount === 2) {
-    elQuizDogImg.className = '';
-    elQuizDogImg.classList.add('blur-level-2');
-    elHintStatus.textContent = "写真がさらによく見えてきたよ！(ヒント残り2回)";
+    elHintStatus.textContent = "美味しい！ともっと喜んでいます！(ヒント残り2回)";
   } 
   else if (hintCount === 3) {
-    elQuizDogImg.className = '';
-    elQuizDogImg.classList.add('blur-level-1');
-    
     // 選択肢の絞り込み
     const correctKey = currentQuestionDog.key;
     let hiddenCount = 0;
@@ -811,9 +959,6 @@ function useHint() {
     elHintStatus.textContent = "ハズレの選択肢が２つ消えたよ！(ヒント残り1回)";
   } 
   else if (hintCount === 4) {
-    elQuizDogImg.className = '';
-    elQuizDogImg.classList.add('blur-level-0');
-
     // 頭文字ヒント
     const jName = currentQuestionDog.japanese;
     const firstChar = jName.charAt(0);
@@ -967,6 +1112,7 @@ function renderDictionary() {
     let imageHtml = '';
     let starsHtml = '';
     let actionBtnHtml = '';
+    let taBtnHtml = '';
     let infoHtml = '';
 
     if (dogWins === 0) {
@@ -996,6 +1142,7 @@ function renderDictionary() {
           <span class="active">🐾</span><span>🐾</span><span>🐾</span>
         </div>
       `;
+      taBtnHtml = `<button class="dict-play-ta-btn" onclick="startTimeAttackFromDict('${key}')">2択で遊ぶ ⏱️</button>`;
     } 
     else if (dogWins === 2) {
       elCard.className = 'dict-card unlocked-2';
@@ -1016,6 +1163,7 @@ function renderDictionary() {
           <span class="active">🐾</span><span class="active">🐾</span><span>🐾</span>
         </div>
       `;
+      taBtnHtml = `<button class="dict-play-ta-btn" onclick="startTimeAttackFromDict('${key}')">2択で遊ぶ ⏱️</button>`;
     } 
     else if (dogWins >= 3) {
       elCard.className = 'dict-card unlocked-3';
@@ -1037,6 +1185,7 @@ function renderDictionary() {
         </div>
       `;
       actionBtnHtml = `<button class="dict-details-btn" onclick="showDogDetailsPopup('${key}')">豆知識 💡</button>`;
+      taBtnHtml = `<button class="dict-play-ta-btn" onclick="startTimeAttackFromDict('${key}')">2択で遊ぶ ⏱️</button>`;
     }
 
     elCard.innerHTML = `
@@ -1046,7 +1195,10 @@ function renderDictionary() {
       <div class="dict-dog-name">${nameHtml}</div>
       ${infoHtml}
       ${starsHtml}
-      ${actionBtnHtml}
+      <div class="dict-actions-wrapper" style="width: 100%; margin-top: 6px;">
+        ${actionBtnHtml}
+        ${taBtnHtml}
+      </div>
     `;
 
     elDictGrid.appendChild(elCard);
@@ -1189,3 +1341,15 @@ function replaceQuizListItem(index) {
     currentQuizList[index] = available[0];
   }
 }
+
+// 図鑑から直接2択タイムアタックを開始する
+function startTimeAttackFromDict(dogKey) {
+  // 図鑑から指定された犬種を一時キーとして保持
+  targetBreedKeyFromDict = dogKey;
+  
+  // クイズゲームをタイムアタックで起動
+  startQuizGame('timeattack', dogKey);
+}
+
+// グローバルスコープに登録
+window.startTimeAttackFromDict = startTimeAttackFromDict;
