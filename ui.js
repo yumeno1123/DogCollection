@@ -32,7 +32,7 @@ export const el = {
   elBtnResultBackToMenu: document.getElementById('btn-result-back-to-menu'),
 
   // クイズ画面の共通・4択用要素
-  elQuizCard: document.querySelector('.quiz-card'),
+  get elQuizCard() { return document.querySelector('.quiz-card'); },
   elQuizProgress: document.getElementById('quiz-progress-text'),
   elQuizTimer: document.getElementById('quiz-timer-text'),
   elQuizScore: document.getElementById('quiz-score-text'),

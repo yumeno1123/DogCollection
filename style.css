@@ -808,22 +808,31 @@ body {
   background-color: var(--accent-hover);
 }
 
-/* 2択モード時のカード余白調整（写真を大きく見せるため） */
+/* 2択モード時のカード余白調整（写真を限界まで大きく見せるため） */
 .card.quiz-card.two-choices-mode {
-  padding: 12px 8px; /* カード外側の余白を削減 */
+  padding: 8px 6px; /* カード全体の横余白を極限まで削減 */
 }
 
 .card.quiz-card.two-choices-mode .two-choices-grid {
-  gap: 8px; /* ボタン同士の隙間を削減 */
+  gap: 6px; /* 左右のボタンの隙間を極限まで削減 */
 }
 
 .card.quiz-card.two-choices-mode .btn-choice {
-  padding: 6px; /* ボタン内側の余白を削減 */
-  border-radius: 16px; /* 余白削減に合わせて角丸を調整 */
+  padding: 4px; /* ボタン内側の余白を極限まで削減 */
+  border-width: 2px; /* ボタンの枠線を細くして写真を広げる */
+  border-radius: 12px; /* 余白削減に合わせて角丸をシャープに */
+  box-shadow: 0 4px 12px rgba(74, 62, 61, 0.05); /* シャドウもスッキリさせる */
 }
 
 .card.quiz-card.two-choices-mode .choice-image-box {
-  margin-bottom: 4px; /* 下部ラベルとの隙間を削減 */
+  margin-bottom: 2px; /* ラベルとの隙間を削減 */
+  border-width: 1px; /* 写真の枠線を細く */
+  border-radius: 10px;
+}
+
+.card.quiz-card.two-choices-mode .choice-label {
+  font-size: 0.85rem; /* ラベルのフォントサイズをやや縮小 */
+  padding: 2px 12px; /* ラベルの余白もスッキリ */
 }
 
 /* 2択画像選択エリア */
