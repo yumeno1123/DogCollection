@@ -7,6 +7,8 @@
  * 通信専門のモジュールファイルです。
  */
 
+import { DOG_API_KEY_MAP } from './dictionary.js';
+
 /**
  * DogAPIから指定された犬種のランダム画像URLを取得します。
  * @param {string} cleanKey - 統一された犬種キー名（例: "poodle-toy"）
@@ -15,8 +17,8 @@
 export async function fetchDogImage(cleanKey) {
   // DogAPI側のキー名とのズレを調整
   let apiBreed = cleanKey;
-  if (cleanKey === 'husky-siberian') {
-    apiBreed = 'husky'; // DogAPIではシベリアンハスキーは単に 'husky' として管理されているため
+  if (cleanKey in DOG_API_KEY_MAP) {
+    apiBreed = DOG_API_KEY_MAP[cleanKey]; // マッピング辞書から取得
   } else {
     // API用のブリード名に変換 (例: "poodle-toy" -> "poodle/toy")
     apiBreed = cleanKey.replace('-', '/');

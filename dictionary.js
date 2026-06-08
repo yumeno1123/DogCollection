@@ -393,4 +393,10 @@ export const SIMILAR_DOG_GROUPS = [
   ["beagle", "basset", "coonhound", "spaniel-cocker", "dalmatian"]
 ];
 
+// DogAPIのキー名とアプリ内の日本語辞書キー名にズレがある場合のマッピング定義
+// アプリ内キー: DogAPI上の実際のキー
+export const DOG_API_KEY_MAP = {
+  "husky-siberian": "husky"
+};
+
 

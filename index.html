@@ -77,6 +77,22 @@
                 </div>
               </div>
             </div>
+            
+            <!-- 設定：効果音 -->
+            <div class="setting-group">
+              <h3>3. 効果音の設定</h3>
+              <div class="sound-settings-control">
+                <label class="sound-switch">
+                  <input id="sound-mute-checkbox" type="checkbox">
+                  <span class="sound-switch-label">🔇 ミュート（音をけす）</span>
+                </label>
+                <div class="volume-slider-container">
+                  <span>🔈</span>
+                  <input id="sound-volume-slider" type="range" min="0" max="100" value="50">
+                  <span>🔊</span>
+                </div>
+              </div>
+            </div>
           </div>
           
           <!-- スタート＆図鑑ボタン -->
@@ -218,6 +234,19 @@
         <div class="quiz-footer-action">
           <button id="btn-quit-quiz" class="btn btn-secondary">クイズをやめる 🏠</button>
         </div>
+
+        <!-- クイズ中断のカスタム確認ポップアップ（モーダル） -->
+        <div id="quit-confirm-modal" class="dict-popup-overlay hidden">
+          <div class="dict-popup">
+            <div class="dog-illustration" style="animation: bounce 1.5s infinite ease-in-out;">🐾</div>
+            <h3>クイズをやめますか？</h3>
+            <p style="text-align: center; font-size: 0.9rem; margin-bottom: 16px;">ここまでのスコアや記録は<br>保存されません。</p>
+            <div class="button-group" style="flex-direction: row; gap: 10px; margin-top: 10px;">
+              <button id="btn-quit-cancel" class="btn btn-secondary" style="flex: 1; margin-top: 0; padding: 10px 12px; font-size: 0.95rem;">つづける 🐾</button>
+              <button id="btn-quit-confirm" class="btn btn-primary" style="flex: 1; margin-top: 0; padding: 10px 12px; font-size: 0.95rem; background-color: var(--incorrect-color); color: #fff;">やめる 🏠</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ================= DICTIONARY SCREEN (図鑑画面) ================= -->
@@ -239,6 +268,20 @@
         <!-- 図鑑のグリッド表示 -->
         <div id="dictionary-grid" class="dictionary-grid">
           <!-- JavaScriptで動的にカードを生成して挿入します -->
+        </div>
+
+        <!-- データ管理エリア -->
+        <div class="data-management-box">
+          <button id="btn-toggle-data-mgmt" class="btn btn-secondary" style="border-radius: 12px; padding: 8px 16px; font-size: 0.85rem; box-shadow: none;">データ管理 💾</button>
+          <div id="data-mgmt-content" class="data-mgmt-content hidden">
+            <p class="data-mgmt-desc">セーブデータのバックアップや読み込みができます。テキストをコピーして保存するか、貼り付けて「よみこむ」を押してください。</p>
+            <textarea id="data-mgmt-textarea" placeholder="ここにセーブデータを貼り付けます"></textarea>
+            <div class="data-mgmt-buttons">
+              <button id="btn-data-copy" class="btn btn-accent">コピー 📋</button>
+              <button id="btn-data-import" class="btn btn-primary" style="background-color: var(--correct-color);">よみこむ 📥</button>
+            </div>
+            <p id="data-mgmt-status" class="data-mgmt-status"></p>
+          </div>
         </div>
 
         <!-- 戻るボタン -->

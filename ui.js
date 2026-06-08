@@ -104,7 +104,20 @@ export const el = {
   elCollectedPercent: document.getElementById('collected-percent'),
   elBtnFilterAll: document.getElementById('btn-filter-all'),
   elBtnFilterCollected: document.getElementById('btn-filter-collected'),
-  elBtnFilterUncollected: document.getElementById('btn-filter-uncollected')
+  elBtnFilterUncollected: document.getElementById('btn-filter-uncollected'),
+
+  // 効果音・ポップアップ・データ管理用
+  elSoundMuteCheckbox: document.getElementById('sound-mute-checkbox'),
+  elSoundVolumeSlider: document.getElementById('sound-volume-slider'),
+  elQuitConfirmModal: document.getElementById('quit-confirm-modal'),
+  elBtnQuitCancel: document.getElementById('btn-quit-cancel'),
+  elBtnQuitConfirm: document.getElementById('btn-quit-confirm'),
+  elBtnToggleDataMgmt: document.getElementById('btn-toggle-data-mgmt'),
+  elDataMgmtContent: document.getElementById('data-mgmt-content'),
+  elDataMgmtTextarea: document.getElementById('data-mgmt-textarea'),
+  elBtnDataCopy: document.getElementById('btn-data-copy'),
+  elBtnDataImport: document.getElementById('btn-data-import'),
+  elDataMgmtStatus: document.getElementById('data-mgmt-status')
 };
 
 // ================= UI表示制御の共通関数 ================= //
@@ -225,6 +238,14 @@ export function renderDictionary() {
     el.elCollectedCount.textContent = collectedCount;
     el.elTotalCount.textContent = totalCount;
     el.elCollectedPercent.textContent = percent;
+
+    // セーブデータ管理エリアの非表示初期化と、現在のセーブデータテキスト書き出し
+    if (el.elDataMgmtContent) el.elDataMgmtContent.classList.add('hidden');
+    if (el.elDataMgmtTextarea) el.elDataMgmtTextarea.value = JSON.stringify(gameState.saveData);
+    if (el.elDataMgmtStatus) {
+      el.elDataMgmtStatus.textContent = '';
+      el.elDataMgmtStatus.className = 'data-mgmt-status';
+    }
 
     el.elDictGrid.innerHTML = '';
     
@@ -419,3 +440,17 @@ export async function showDogDetailsPopup(dogKey) {
 
 // インラインの onclick 属性で動作する関数をグローバルに公開
 window.showDogDetailsPopup = showDogDetailsPopup;
+
+/**
+ * クイズ中断のカスタム確認ポップアップの表示を切り替えます。
+ * @param {boolean} show - 表示するかどうか
+ */
+export function showQuitConfirmModal(show) {
+  if (el.elQuitConfirmModal) {
+    if (show) {
+      el.elQuitConfirmModal.classList.remove('hidden');
+    } else {
+      el.elQuitConfirmModal.classList.add('hidden');
+    }
+  }
+}

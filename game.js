@@ -10,7 +10,7 @@
 import { gameState, saveGameData } from './state.js';
 import { getDogData, POPULAR_DOGS, ALL_DOGS_DICTIONARY, SIMILAR_DOG_GROUPS } from './dictionary.js';
 import { loadDogImageWithRetry, fetchDogImage } from './api.js';
-import { el, switchScreen, showLoading, showPrepScreen, renderNewUnlocksList } from './ui.js';
+import { el, switchScreen, showLoading, showPrepScreen, renderNewUnlocksList, showQuitConfirmModal } from './ui.js';
 
 // ================= 効果音再生 (Web Audio API) ================= //
 let audioCtx = null;
@@ -32,19 +32,26 @@ function getAudioContext() {
  * 正解時の効果音（ピンポーン）を合成再生します。
  */
 function playCorrectSound() {
+  if (gameState.soundMuted) return; // ミュート時は再生しない
+
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
+    
+    // 共通の音量設定ゲイン
+    const mainGain = ctx.createGain();
+    mainGain.gain.setValueAtTime(gameState.soundVolume * 0.16, now); // ボリュームを適用（基準0.16）
+    mainGain.connect(ctx.destination);
     
     // 1音目: ソ (784Hz)
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(783.99, now); // G5 (ソ)
-    gain1.gain.setValueAtTime(0.08, now);
+    gain1.gain.setValueAtTime(0.5, now);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
     osc1.connect(gain1);
-    gain1.connect(ctx.destination);
+    gain1.connect(mainGain);
     
     // 2音目: ド (1046.5Hz) - 少し遅れて開始
     const osc2 = ctx.createOscillator();
@@ -52,10 +59,10 @@ function playCorrectSound() {
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(1046.50, now + 0.12); // C6 (ド)
     gain2.gain.setValueAtTime(0, now);
-    gain2.gain.setValueAtTime(0.08, now + 0.12);
+    gain2.gain.setValueAtTime(0.5, now + 0.12);
     gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
     osc2.connect(gain2);
-    gain2.connect(ctx.destination);
+    gain2.connect(mainGain);
     
     osc1.start(now);
     osc1.stop(now + 0.15);
@@ -70,9 +77,16 @@ function playCorrectSound() {
  * 不正解時の効果音（ブッブー）を合成再生します。
  */
 function playIncorrectSound() {
+  if (gameState.soundMuted) return; // ミュート時は再生しない
+
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
+    
+    // 共通の音量設定ゲイン
+    const mainGain = ctx.createGain();
+    mainGain.gain.setValueAtTime(gameState.soundVolume * 0.16, now); // ボリュームを適用
+    mainGain.connect(ctx.destination);
     
     // わずかに周波数をずらしたノコギリ波を重ねてうねりのあるブー音を作る
     const osc1 = ctx.createOscillator();
@@ -80,7 +94,7 @@ function playIncorrectSound() {
     osc1.type = 'sawtooth';
     osc1.frequency.setValueAtTime(140, now);
     osc1.frequency.linearRampToValueAtTime(120, now + 0.4);
-    gain1.gain.setValueAtTime(0.08, now);
+    gain1.gain.setValueAtTime(0.5, now);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
     
     const osc2 = ctx.createOscillator();
@@ -88,13 +102,13 @@ function playIncorrectSound() {
     osc2.type = 'sawtooth';
     osc2.frequency.setValueAtTime(143, now);
     osc2.frequency.linearRampToValueAtTime(123, now + 0.4);
-    gain2.gain.setValueAtTime(0.08, now);
+    gain2.gain.setValueAtTime(0.5, now);
     gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
     
     osc1.connect(gain1);
-    gain1.connect(ctx.destination);
+    gain1.connect(mainGain);
     osc2.connect(gain2);
-    gain2.connect(ctx.destination);
+    gain2.connect(mainGain);
     
     osc1.start(now);
     osc1.stop(now + 0.4);
@@ -124,14 +138,26 @@ export function clearAllTimers() {
 // ================= クイズゲームの中断処理 ================= //
 
 /**
- * クイズを途中で終了し、スタート画面に戻ります。
+ * クイズ中断の確認ポップアップで「やめる」を押したときの処理です。
+ */
+export function confirmQuitQuiz() {
+  showQuitConfirmModal(false);
+  clearAllTimers(); // タイマーを確実に止める
+  switchScreen('start-screen');
+}
+
+/**
+ * クイズ中断の確認ポップアップで「つづける」を押したときの処理です。
+ */
+export function cancelQuitQuiz() {
+  showQuitConfirmModal(false);
+}
+
+/**
+ * クイズを途中で終了するための確認画面（ポップアップ）を表示します。
  */
 export function quitQuiz() {
-  const confirmQuit = confirm("ゲームを途中でやめますか？\n（ここまでのスコアや記録は保存されません）");
-  if (confirmQuit) {
-    clearAllTimers(); // タイマーを確実に止める
-    switchScreen('start-screen');
-  }
+  showQuitConfirmModal(true);
 }
 
 // ================= クイズゲームの開始処理 ================= //
@@ -973,27 +999,24 @@ export function useHint() {
   gameState.hintCount++;
   el.elBtnHint.innerHTML = `<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り${4 - gameState.hintCount}回)`;
 
+  const correctKey = gameState.currentQuestionDog.key;
+  // ハズレのボタンを特定（元のDOM配列の順番のままで、消え方に一貫性を持たせる）
+  const wrongButtons = el.elOptions.filter(btn => btn.dataset.key !== correctKey);
+
   if (gameState.hintCount === 1) {
-    el.elHintStatus.textContent = "おやつを喜んで食べているよ！(ヒント残り3回)";
+    if (wrongButtons[0]) wrongButtons[0].style.visibility = 'hidden';
+    el.elHintStatus.textContent = "おやつを喜んで食べているよ！ハズレが1つ消えた！(ヒント残り3回)";
   } 
   else if (gameState.hintCount === 2) {
-    el.elHintStatus.textContent = "美味しい！ともっと喜んでいます！(ヒント残り2回)";
+    if (wrongButtons[0]) wrongButtons[0].style.visibility = 'hidden';
+    if (wrongButtons[1]) wrongButtons[1].style.visibility = 'hidden';
+    el.elHintStatus.textContent = "美味しい！ともっと喜んでいます！ハズレがもう1つ消えた！(ヒント残り2回)";
   } 
   else if (gameState.hintCount === 3) {
-    const correctKey = gameState.currentQuestionDog.key;
-    let hiddenCount = 0;
-    
-    const shuffledOptions = [...el.elOptions];
-    shuffleArray(shuffledOptions);
-
-    shuffledOptions.forEach(btn => {
-      if (btn.dataset.key !== correctKey && hiddenCount < 2) {
-        btn.style.visibility = 'hidden';
-        hiddenCount++;
-      }
-    });
-
-    el.elHintStatus.textContent = "ハズレの選択肢が２つ消えたよ！(ヒント残り1回)";
+    if (wrongButtons[0]) wrongButtons[0].style.visibility = 'hidden';
+    if (wrongButtons[1]) wrongButtons[1].style.visibility = 'hidden';
+    if (wrongButtons[2]) wrongButtons[2].style.visibility = 'hidden';
+    el.elHintStatus.textContent = "大喜び！さらにハズレが消えて残り2択になったよ！(ヒント残り1回)";
   } 
   else if (gameState.hintCount === 4) {
     const jName = gameState.currentQuestionDog.japanese;
@@ -1059,7 +1082,7 @@ function showResultScreen2Choices(type, data) {
     } else {
       const bestTimeKey = `${gameState.quizMode}_timeattack_best`;
       const bestTime = gameState.saveData[bestTimeKey] || 999999;
-      el.elResultMessage.textContent = `30問クリアおめでとう！(自己ベスト: ${bestTime.toFixed(2)}秒) 次はもっと速く走れるかな？🐾`;
+      el.elResultMessage.textContent = `10問クリアおめでとう！(自己ベスト: ${bestTime.toFixed(2)}秒) 次はもっと速く走れるかな？🐾`;
     }
   } else {
     el.elResultEndlessBox.classList.remove('hidden');

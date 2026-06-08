@@ -12,6 +12,10 @@ export const gameState = {
   // セーブデータ（犬種キー: 正解回数など）
   saveData: {},                             
 
+  // 効果音設定（初期値）
+  soundMuted: false,
+  soundVolume: 0.5,
+
   // ゲームの進行状況を管理する変数
   currentQuizList: [],           // 今回のクイズで出題する犬種キーのリスト
   currentQuestionIndex: 0,       // 現在何問目か（0からスタート）
@@ -63,6 +67,10 @@ export function loadSaveData() {
       // データの形式チェック（オブジェクトかつ配列ではないこと）
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         gameState.saveData = parsed;
+        
+        // 効果音設定の復元
+        gameState.soundMuted = parsed._sound_muted !== undefined ? parsed._sound_muted : false;
+        gameState.soundVolume = parsed._sound_volume !== undefined ? parsed._sound_volume : 0.5;
       } else {
         console.warn("セーブデータの形式が正しくありません。初期化します。");
       }
@@ -77,6 +85,10 @@ export function loadSaveData() {
  */
 export function saveGameData() {
   try {
+    // 保存前に設定値をセーブデータオブジェクトに同期
+    gameState.saveData._sound_muted = gameState.soundMuted;
+    gameState.saveData._sound_volume = gameState.soundVolume;
+    
     localStorage.setItem(gameState.STORAGE_KEY, JSON.stringify(gameState.saveData));
   } catch (e) {
     console.error("セーブデータの保存に失敗しました。", e);

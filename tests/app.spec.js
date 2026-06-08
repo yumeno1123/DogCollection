@@ -99,16 +99,14 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
     // 準備画面が終了するのを待つ
     await expect(page.locator('#quiz-main-contents')).not.toHaveClass(/hidden/, { timeout: 10000 });
 
-    // 確認ダイアログ（window.confirm）がポップアップしたときに「OK」を押すようにPlaywrightにリスナーを登録
-    page.once('dialog', async dialog => {
-      // ダイアログのメッセージ内容を確認
-      expect(dialog.message()).toContain('ゲームを途中でやめますか？');
-      // 「OK」を押してダイアログを閉じる
-      await dialog.accept();
-    });
-
     // 「クイズをやめる」ボタンをクリック
     await page.locator('#btn-quit-quiz').click();
+
+    // カスタム確認ポップアップが表示されるのを待つ
+    await expect(page.locator('#quit-confirm-modal')).not.toHaveClass(/hidden/);
+
+    // ポップアップ内の「やめる」ボタンをクリック
+    await page.locator('#btn-quit-confirm').click();
 
     // スタート画面に戻り、クイズ画面が隠れたことを確認
     await expect(page.locator('#start-screen')).not.toHaveClass(/hidden/);
@@ -253,10 +251,9 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
     await expect(page.locator('#quiz-progress-text')).toContainText('第 2 問', { timeout: 3000 });
 
     // クイズを中断してスタート画面に戻る
-    page.once('dialog', async dialog => {
-      await dialog.accept(); // 中断確認ダイアログの「OK」をクリック
-    });
     await page.locator('#btn-quit-quiz').click();
+    await expect(page.locator('#quit-confirm-modal')).not.toHaveClass(/hidden/);
+    await page.locator('#btn-quit-confirm').click();
     await expect(page.locator('#start-screen')).not.toHaveClass(/hidden/);
 
     // 6. 再び図鑑を開く
