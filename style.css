@@ -808,6 +808,24 @@ body {
   background-color: var(--accent-hover);
 }
 
+/* 2択モード時のカード余白調整（写真を大きく見せるため） */
+.card.quiz-card.two-choices-mode {
+  padding: 12px 8px; /* カード外側の余白を削減 */
+}
+
+.card.quiz-card.two-choices-mode .two-choices-grid {
+  gap: 8px; /* ボタン同士の隙間を削減 */
+}
+
+.card.quiz-card.two-choices-mode .btn-choice {
+  padding: 6px; /* ボタン内側の余白を削減 */
+  border-radius: 16px; /* 余白削減に合わせて角丸を調整 */
+}
+
+.card.quiz-card.two-choices-mode .choice-image-box {
+  margin-bottom: 4px; /* 下部ラベルとの隙間を削減 */
+}
+
 /* 2択画像選択エリア */
 .two-choices-area {
   padding: 10px 0;

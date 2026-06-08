@@ -32,6 +32,7 @@ export const el = {
   elBtnResultBackToMenu: document.getElementById('btn-result-back-to-menu'),
 
   // クイズ画面の共通・4択用要素
+  elQuizCard: document.querySelector('.quiz-card'),
   elQuizProgress: document.getElementById('quiz-progress-text'),
   elQuizTimer: document.getElementById('quiz-timer-text'),
   elQuizScore: document.getElementById('quiz-score-text'),
@@ -116,6 +117,11 @@ export function switchScreen(screenId) {
   el.elQuizScreen.classList.add('hidden');
   el.elDictionaryScreen.classList.add('hidden');
   el.elResultScreen.classList.add('hidden');
+
+  // 画面が切り替わるので、2択用のカード余白クラスをリセットする
+  if (el.elQuizCard) {
+    el.elQuizCard.classList.remove('two-choices-mode');
+  }
 
   // 指定された画面だけ表示する
   const target = document.getElementById(screenId);

@@ -44,11 +44,24 @@ export async function loadDogImageWithRetry(dogKey, maxRetries = 3) {
       // 1. DogAPIから画像URLを取得
       const url = await fetchDogImage(dogKey);
       
-      // 2. 実際に画像をロードしてみて、画像ファイルが正しく読み込めるか検証
+      // 2. 実際に画像をロードしてみて、画像ファイルが正しく読み込めるか検証（5秒タイムアウト付き）
       await new Promise((resolve, reject) => {
         const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => reject(new Error("画像ファイルのロードに失敗しました"));
+        
+        // 5秒経過してもロードが終わらない場合はタイムアウトエラーにする
+        const timeoutId = setTimeout(() => {
+          img.src = ""; // ロード処理をキャンセル
+          reject(new Error("画像ロードタイムアウト (5秒)"));
+        }, 5000);
+        
+        img.onload = () => {
+          clearTimeout(timeoutId);
+          resolve(url);
+        };
+        img.onerror = () => {
+          clearTimeout(timeoutId);
+          reject(new Error("画像ファイルのロードに失敗しました"));
+        };
         img.src = url;
       });
       
@@ -61,3 +74,4 @@ export async function loadDogImageWithRetry(dogKey, maxRetries = 3) {
     }
   }
 }
+

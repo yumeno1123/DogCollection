@@ -12,6 +12,99 @@ import { getDogData, POPULAR_DOGS, ALL_DOGS_DICTIONARY, SIMILAR_DOG_GROUPS } fro
 import { loadDogImageWithRetry, fetchDogImage } from './api.js';
 import { el, switchScreen, showLoading, showPrepScreen, renderNewUnlocksList } from './ui.js';
 
+// ================= 効果音再生 (Web Audio API) ================= //
+let audioCtx = null;
+
+/**
+ * AudioContextを初期化または取得します。
+ */
+function getAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+/**
+ * 正解時の効果音（ピンポーン）を合成再生します。
+ */
+function playCorrectSound() {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+    
+    // 1音目: ソ (784Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(783.99, now); // G5 (ソ)
+    gain1.gain.setValueAtTime(0.08, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    
+    // 2音目: ド (1046.5Hz) - 少し遅れて開始
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1046.50, now + 0.12); // C6 (ド)
+    gain2.gain.setValueAtTime(0, now);
+    gain2.gain.setValueAtTime(0.08, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    
+    osc1.start(now);
+    osc1.stop(now + 0.15);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.65);
+  } catch (e) {
+    console.error("効果音の再生に失敗しました (正解):", e);
+  }
+}
+
+/**
+ * 不正解時の効果音（ブッブー）を合成再生します。
+ */
+function playIncorrectSound() {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+    
+    // わずかに周波数をずらしたノコギリ波を重ねてうねりのあるブー音を作る
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(140, now);
+    osc1.frequency.linearRampToValueAtTime(120, now + 0.4);
+    gain1.gain.setValueAtTime(0.08, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sawtooth';
+    osc2.frequency.setValueAtTime(143, now);
+    osc2.frequency.linearRampToValueAtTime(123, now + 0.4);
+    gain2.gain.setValueAtTime(0.08, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    
+    osc1.start(now);
+    osc1.stop(now + 0.4);
+    osc2.start(now);
+    osc2.stop(now + 0.4);
+  } catch (e) {
+    console.error("効果音の再生に失敗しました (不正解):", e);
+  }
+}
+
 // ================= タイマー管理 ================= //
 
 /**
@@ -111,6 +204,9 @@ function setupChoicesForPreload(correctKey) {
 /**
  * クイズの画像とデータを一括してプリロードします。
  */
+/**
+ * クイズの画像とデータを一括してプリロードします。
+ */
 async function preloadQuizData(gameType, count, onProgress) {
   gameState.preloadedQuestions = [];
   let loadedCount = 0;
@@ -141,12 +237,16 @@ async function preloadQuizData(gameType, count, onProgress) {
     }
   }
 
-  const promises = prepList.map(async (item, index) => {
+  // 1つずつ順番に画像をダウンロードする（APIの通信詰まり対策）
+  const results = [];
+  for (let i = 0; i < prepList.length; i++) {
+    const item = prepList[i];
     try {
       if (gameType === '4choices') {
         const imageUrl = await loadDogImageWithRetry(item.correctKey);
         item.imageUrl = imageUrl;
       } else {
+        // 2択ゲームの左右の画像。1問ごとにロードすることで同時リクエスト数を制限する
         const [urlLeft, urlRight] = await Promise.all([
           loadDogImageWithRetry(item.isLeftCorrect ? item.correctKey : item.wrongKey),
           loadDogImageWithRetry(item.isLeftCorrect ? item.wrongKey : item.correctKey)
@@ -158,7 +258,7 @@ async function preloadQuizData(gameType, count, onProgress) {
       if (onProgress) {
         onProgress(loadedCount, totalCount);
       }
-      return item;
+      results.push(item);
     } catch (err) {
       console.warn(`プリロード失敗。別の画像でリトライまたは差し替えます:`, err);
       let success = false;
@@ -171,7 +271,7 @@ async function preloadQuizData(gameType, count, onProgress) {
             item.correctKey = newBreed;
             item.choices = setupChoicesForPreload(newBreed);
             item.imageUrl = imageUrl;
-            gameState.currentQuizList[index] = newBreed;
+            gameState.currentQuizList[i] = newBreed;
           } else {
             if (gameState.activeGameType === 'timeattack') {
               const newWrong = getIncorrectChoices(item.correctKey, 1)[0];
@@ -193,7 +293,7 @@ async function preloadQuizData(gameType, count, onProgress) {
               ]);
               item.urlLeft = urlLeft;
               item.urlRight = urlRight;
-              gameState.currentQuizList[index] = newBreed;
+              gameState.currentQuizList[i] = newBreed;
             }
           }
           success = true;
@@ -211,11 +311,11 @@ async function preloadQuizData(gameType, count, onProgress) {
       if (onProgress) {
         onProgress(loadedCount, totalCount);
       }
-      return item;
+      results.push(item);
     }
-  });
+  }
 
-  gameState.preloadedQuestions = await Promise.all(promises);
+  gameState.preloadedQuestions = results;
 }
 
 /**
@@ -321,6 +421,7 @@ export async function startQuizGame(gameType, targetBreedKey = null) {
   showPrepScreen(false);
 
   if (gameState.activeGameType === '4choices') {
+    el.elQuizCard.classList.remove('two-choices-mode'); // 4択は通常余白
     el.elFourChoicesImageArea.classList.remove('hidden');
     el.elFourChoicesOptionsArea.classList.remove('hidden');
     el.elTwoChoicesArea.classList.add('hidden');
@@ -330,6 +431,7 @@ export async function startQuizGame(gameType, targetBreedKey = null) {
 
     showQuestion();
   } else {
+    el.elQuizCard.classList.add('two-choices-mode'); // 2択は余白を狭めて画像を大きくする
     el.elFourChoicesImageArea.classList.add('hidden');
     el.elFourChoicesOptionsArea.classList.add('hidden');
     el.elHintActionArea.classList.add('hidden');
@@ -487,6 +589,7 @@ function selectAnswer(selectedKey, clickedBtn) {
   gameState.saveData[`${correctKey}_attempts`] = prevAttempts + 1;
 
   if (isCorrect) {
+    playCorrectSound(); // 正解の効果音を再生
     clickedBtn.classList.add('correct');
     gameState.currentScore++;
     
@@ -522,6 +625,7 @@ function selectAnswer(selectedKey, clickedBtn) {
       });
     }
   } else {
+    playIncorrectSound(); // 不正解の効果音を再生
     clickedBtn.classList.add('incorrect');
     
     el.elOptions.forEach(btn => {
@@ -701,6 +805,7 @@ function selectAnswer2Choices(isCorrect, clickedBtn) {
   const elFeedbackOther = (clickedBtn === el.elChoiceLeft) ? el.elFeedbackRight : el.elFeedbackLeft;
 
   if (isCorrect) {
+    playCorrectSound(); // 正解の効果音を再生
     clickedBtn.classList.add('correct');
     elFeedbackClicked.textContent = '⭕';
     elFeedbackClicked.className = 'choice-feedback show';
@@ -725,6 +830,7 @@ function selectAnswer2Choices(isCorrect, clickedBtn) {
 
     saveGameData();
   } else {
+    playIncorrectSound(); // 不正解の効果音を再生
     clickedBtn.classList.add('incorrect');
     
     elFeedbackClicked.textContent = '❌';

@@ -16,9 +16,26 @@ import { startQuizGame, quitQuiz, useHint } from './game.js';
 window.addEventListener('DOMContentLoaded', () => {
   loadSaveData();      // セーブデータを読み込む (state.js)
   setupEventListeners(); // ボタンのクリックイベントなどを設定する
+  showDogCounts();     // スタート画面に犬種の登録総数を表示する
 });
 
+// 出題モードごとの登録犬種数を計算して画面に表示する
+function showDogCounts() {
+  import('./dictionary.js').then((dict) => {
+    const popularCount = Object.keys(dict.POPULAR_DOGS).length;
+    const allCount = new Set([...Object.keys(dict.POPULAR_DOGS), ...Object.keys(dict.ALL_DOGS_DICTIONARY)]).size;
+    
+    const elPopularCount = document.getElementById('popular-count');
+    const elAllCount = document.getElementById('all-count');
+    if (elPopularCount) elPopularCount.textContent = popularCount;
+    if (elAllCount) elAllCount.textContent = allCount;
+  }).catch(err => {
+    console.error("犬種数の計算に失敗しました:", err);
+  });
+}
+
 // イベントリスナーの設定
+
 function setupEventListeners() {
   // 画面遷移：スタート画面 -> クイズ画面（各ゲームモードに対応）
   el.elBtnStart.addEventListener('click', () => startQuizGame('4choices'));

@@ -44,35 +44,35 @@
                   <input id="mode-popular" type="radio" name="出題モード" value="popular" checked>
                   <div class="radio-tile">
                     <span class="emoji">🐕</span>
-                    <label for="mode-popular">おなじみの犬種</label>
+                    <label for="mode-popular">おなじみの犬種 (<span id="popular-count">--</span>種)</label>
                   </div>
                 </div>
                 <div class="input-container">
                   <input id="mode-all" type="radio" name="出題モード" value="all">
                   <div class="radio-tile">
                     <span class="emoji">🌍</span>
-                    <label for="mode-all">全犬種モード</label>
+                    <label for="mode-all">全犬種モード (<span id="all-count">--</span>種)</label>
                   </div>
                 </div>
               </div>
             </div>
             
-            <!-- 設定：難易度（ぼかし） -->
+            <!-- 設定：難易度 -->
             <div class="setting-group">
-              <h3>2. クイズのむずかしさ（ぼかし）</h3>
+              <h3>2. クイズのむずかしさ</h3>
               <div class="radio-tile-group">
                 <div class="input-container">
                   <input id="diff-easy" type="radio" name="難易度" value="easy" checked>
                   <div class="radio-tile">
                     <span class="emoji">✨</span>
-                    <label for="diff-easy">かんたん (ぼかしなし)</label>
+                    <label for="diff-easy">かんたん</label>
                   </div>
                 </div>
                 <div class="input-container">
                   <input id="diff-hard" type="radio" name="難易度" value="hard">
                   <div class="radio-tile">
-                    <span class="emoji">🌫️</span>
-                    <label for="diff-hard">むずかしい (ぼかしあり)</label>
+                    <span class="emoji">🤔</span>
+                    <label for="diff-hard">むずかしい (似た犬種)</label>
                   </div>
                 </div>
               </div>
@@ -143,7 +143,7 @@
           <div class="card quiz-card">
             <!-- 4択クイズ用の犬の画像表示コンテナ -->
             <div id="four-choices-image-area" class="dog-image-container">
-              <img id="quiz-dog-image" src="" alt="クイズ用の犬の画像" class="blur-easy">
+              <img id="quiz-dog-image" src="" alt="クイズ用の犬の画像">
               <!-- ロード中の肉球てくてく表示 -->
               <div id="loading-indicator" class="loading-overlay hidden">
                 <div class="paw-loader">
@@ -239,7 +239,7 @@
 
         <!-- 戻るボタン -->
         <div class="footer-action">
-          <button id="btn-back-to-menu" class="btn btn-secondary btn-large">スタートがめんに戻る 🏠</button>
+          <button id="btn-back-to-menu" class="btn btn-secondary btn-large">スタート画面に戻る 🏠</button>
         </div>
       </section>
 
