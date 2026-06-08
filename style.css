@@ -810,29 +810,33 @@ body {
 
 /* 2択モード時のカード余白調整（写真を限界まで大きく見せるため） */
 .card.quiz-card.two-choices-mode {
-  padding: 8px 6px; /* カード全体の横余白を極限まで削減 */
+  padding: 16px 12px; /* 縦並びに合わせて適度な余白に戻す */
 }
 
 .card.quiz-card.two-choices-mode .two-choices-grid {
-  gap: 6px; /* 左右のボタンの隙間を極限まで削減 */
+  grid-template-columns: 1fr; /* 縦1列に変更 */
+  gap: 12px; /* ボタン間の隙間 */
 }
 
 .card.quiz-card.two-choices-mode .btn-choice {
-  padding: 4px; /* ボタン内側の余白を極限まで削減 */
-  border-width: 2px; /* ボタンの枠線を細くして写真を広げる */
-  border-radius: 12px; /* 余白削減に合わせて角丸をシャープに */
-  box-shadow: 0 4px 12px rgba(74, 62, 61, 0.05); /* シャドウもスッキリさせる */
+  padding: 8px; /* ボタン内側の余白を少し増やす */
+  border-width: 3px; /* 枠線を少し太くして可愛さを出す */
+  border-radius: 16px; /* 角丸を少し柔らかく */
+  box-shadow: 0 4px 12px rgba(74, 62, 61, 0.05); 
 }
 
 .card.quiz-card.two-choices-mode .choice-image-box {
-  margin-bottom: 2px; /* ラベルとの隙間を削減 */
-  border-width: 1px; /* 写真の枠線を細く */
-  border-radius: 10px;
+  margin-bottom: 4px; /* ラベルとの隙間 */
+  border-width: 1px; 
+  border-radius: 12px;
+  width: 100%;
+  height: 160px; /* 画像の高さを抑えて画面からはみ出さないようにする */
+  aspect-ratio: auto; /* 正方形アスペクト比を解除 */
 }
 
 .card.quiz-card.two-choices-mode .choice-label {
-  font-size: 0.85rem; /* ラベルのフォントサイズをやや縮小 */
-  padding: 2px 12px; /* ラベルの余白もスッキリ */
+  font-size: 0.95rem; /* ラベルのフォントサイズを微調整 */
+  padding: 2px 16px; 
 }
 
 /* 2択画像選択エリア */
@@ -855,7 +859,7 @@ body {
 
 .two-choices-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -935,6 +939,27 @@ body {
 .btn-choice.incorrect .choice-label {
   background-color: var(--incorrect-color) !important;
   color: #FFFFFF !important;
+}
+
+/* 犬種名表示用オーバーレイ */
+.choice-breed-name {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(74, 62, 61, 0.85); /* ダークブラウンの半透明背景 */
+  color: #FFFFFF;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 8px 4px;
+  text-align: center;
+  z-index: 8; /* フィードバックマーク(10)より下に配置 */
+  animation: fadeIn 0.3s ease;
+  box-sizing: border-box;
+}
+
+.choice-breed-name.hidden {
+  display: none !important;
 }
 
 /* エンドレスモード用のカウントダウンタイマーバー */

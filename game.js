@@ -704,6 +704,14 @@ async function showQuestion2Choices() {
     element.style.fontSize = '';
   });
 
+  // 不正解時の犬種名表示をクリアして非表示にする
+  [el.elBreedNameLeft, el.elBreedNameRight].forEach(element => {
+    if (element) {
+      element.classList.add('hidden');
+      element.textContent = '';
+    }
+  });
+
   if (gameState.activeGameType === 'timeattack') {
     el.elQuizProgress.textContent = `第 ${gameState.currentQuestionIndex + 1} / 10 問`;
   } else {
@@ -748,6 +756,10 @@ async function showQuestion2Choices() {
   el.elChoiceRight.dataset.isCorrect = qData.isLeftCorrect ? "false" : "true";
   el.elChoiceLeft.dataset.key = correctKey;
   el.elChoiceRight.dataset.key = correctKey;
+
+  // 各選択肢が表す本来の犬種キーを保存
+  el.elChoiceLeft.dataset.breedKey = qData.isLeftCorrect ? qData.correctKey : qData.wrongKey;
+  el.elChoiceRight.dataset.breedKey = qData.isLeftCorrect ? qData.wrongKey : qData.correctKey;
 
   el.elChoiceLeft.onclick = () => selectAnswer2Choices(qData.isLeftCorrect, el.elChoiceLeft);
   el.elChoiceRight.onclick = () => selectAnswer2Choices(!qData.isLeftCorrect, el.elChoiceRight);
@@ -803,6 +815,26 @@ function selectAnswer2Choices(isCorrect, clickedBtn) {
 
   const elFeedbackClicked = (clickedBtn === el.elChoiceLeft) ? el.elFeedbackLeft : el.elFeedbackRight;
   const elFeedbackOther = (clickedBtn === el.elChoiceLeft) ? el.elFeedbackRight : el.elFeedbackLeft;
+
+  // 不正解（正解ではない方）の画像に犬種名を表示する
+  const isLeftCorrect = el.elChoiceLeft.dataset.isCorrect === "true";
+  if (isLeftCorrect) {
+    // 左が正解ということは、右が不正解
+    const wrongBreedKey = el.elChoiceRight.dataset.breedKey;
+    const wrongBreedData = getDogData(wrongBreedKey);
+    if (el.elBreedNameRight && wrongBreedData) {
+      el.elBreedNameRight.textContent = wrongBreedData.japanese;
+      el.elBreedNameRight.classList.remove('hidden');
+    }
+  } else {
+    // 右が正解ということは、leftが不正解
+    const wrongBreedKey = el.elChoiceLeft.dataset.breedKey;
+    const wrongBreedData = getDogData(wrongBreedKey);
+    if (el.elBreedNameLeft && wrongBreedData) {
+      el.elBreedNameLeft.textContent = wrongBreedData.japanese;
+      el.elBreedNameLeft.classList.remove('hidden');
+    }
+  }
 
   if (isCorrect) {
     playCorrectSound(); // 正解の効果音を再生

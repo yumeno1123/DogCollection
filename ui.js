@@ -64,6 +64,8 @@ export const el = {
   elLoadingRight: document.getElementById('loading-right'),
   elFeedbackLeft: document.getElementById('feedback-left'),
   elFeedbackRight: document.getElementById('feedback-right'),
+  elBreedNameLeft: document.getElementById('breed-name-left'),
+  elBreedNameRight: document.getElementById('breed-name-right'),
 
   // 準備画面用の要素
   elPrepArea: document.getElementById('prep-area'),
