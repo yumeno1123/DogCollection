@@ -399,4 +399,38 @@ export const DOG_API_KEY_MAP = {
   "husky-siberian": "husky"
 };
 
+// 激似対決（そっくり2択）モード用の激似ライバルペアの定義
+export const SUPER_HARD_PAIRS = [
+  { breedA: "shiba", breedB: "akita", title: "柴犬 vs 秋田犬" },
+  { breedA: "retriever-golden", breedB: "retriever-labrador", title: "ゴールデン vs ラブラドール" },
+  { breedA: "spitz-japanese", breedB: "samoyed", title: "日本スピッツ vs サモエド" },
+  { breedA: "bulldog-french", breedB: "pug", title: "フレンチブルドッグ vs パグ" },
+  { breedA: "corgi-cardigan", breedB: "corgi-pembroke", title: "カーディガン vs ペンブローク" }
+];
+
+/**
+ * 与えられた犬種キーと見た目が似ている犬種の日本語名リストを取得します。
+ * @param {string} correctKey - 対象の犬種キー
+ * @returns {string[]} 似ている犬種の日本語名の配列
+ */
+export function getSimilarBreeds(correctKey) {
+  const similarJapaneseNames = [];
+  
+  SIMILAR_DOG_GROUPS.forEach(group => {
+    if (group.includes(correctKey)) {
+      group.forEach(breed => {
+        if (breed !== correctKey) {
+          const dogData = getDogData(breed);
+          if (dogData && dogData.japanese && !similarJapaneseNames.includes(dogData.japanese)) {
+            similarJapaneseNames.push(dogData.japanese);
+          }
+        }
+      });
+    }
+  });
+  
+  return similarJapaneseNames;
+}
+
+
 

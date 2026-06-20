@@ -7,8 +7,8 @@
  * の設定のみを行うエントリーポイントモジュールです。
  */
 
-import { loadSaveData, saveGameData, gameState } from './state.js';
-import { el, switchScreen, renderDictionary, filterDictionary } from './ui.js';
+import { loadSaveData, saveGameData, gameState, clearPlayRecords } from './state.js';
+import { el, switchScreen, renderDictionary, filterDictionary, renderRecords } from './ui.js';
 import { startQuizGame, quitQuiz, useHint, confirmQuitQuiz, cancelQuitQuiz } from './game.js';
 
 // ================= アプリの初期起動処理 ================= //
@@ -180,4 +180,37 @@ function setupEventListeners() {
   el.elBtnFilterAll.addEventListener('click', () => filterDictionary('all'));
   el.elBtnFilterCollected.addEventListener('click', () => filterDictionary('collected'));
   el.elBtnFilterUncollected.addEventListener('click', () => filterDictionary('uncollected'));
+
+  // 過去の記録画面への遷移
+  if (el.elBtnViewRecords) {
+    el.elBtnViewRecords.addEventListener('click', () => {
+      switchScreen('records-screen');
+      renderRecords();
+    });
+  }
+
+  // 過去の記録画面からスタート画面に戻る
+  if (el.elBtnRecordsBackToMenu) {
+    el.elBtnRecordsBackToMenu.addEventListener('click', () => {
+      switchScreen('start-screen');
+    });
+  }
+
+  // 履歴データのリセット
+  if (el.elBtnRecordsClear) {
+    el.elBtnRecordsClear.addEventListener('click', () => {
+      const isConfirmed = confirm('これまでのプレイ履歴をリセットしますか？\n(自己ベストの記録はリセットされません。)');
+      if (isConfirmed) {
+        clearPlayRecords();
+        renderRecords();
+      }
+    });
+  }
+
+  // 激似2択対決の開始
+  if (el.elBtnStartSuperhard) {
+    el.elBtnStartSuperhard.addEventListener('click', () => {
+      startQuizGame('superhard');
+    });
+  }
 }

@@ -18,18 +18,23 @@ export const el = {
   elQuizScreen: document.getElementById('quiz-screen'),
   elDictionaryScreen: document.getElementById('dictionary-screen'),
   elResultScreen: document.getElementById('result-screen'),
+  elRecordsScreen: document.getElementById('records-screen'),
 
   // ボタン類
   elBtnStart: document.getElementById('btn-start-game'),
   elBtnStartTimeAttack: document.getElementById('btn-start-timeattack'),
   elBtnStartEndless: document.getElementById('btn-start-endless'),
+  elBtnStartSuperhard: document.getElementById('btn-start-superhard'),
   elBtnViewDict: document.getElementById('btn-view-dictionary'),
+  elBtnViewRecords: document.getElementById('btn-view-records'),
   elBtnBackToMenu: document.getElementById('btn-back-to-menu'),
   elBtnRestart: document.getElementById('btn-restart-game'),
   elBtnGoToDict: document.getElementById('btn-go-to-dict'),
   elBtnHint: document.getElementById('btn-quiz-hint'),
   elBtnQuit: document.getElementById('btn-quit-quiz'),
   elBtnResultBackToMenu: document.getElementById('btn-result-back-to-menu'),
+  elBtnRecordsClear: document.getElementById('btn-records-clear'),
+  elBtnRecordsBackToMenu: document.getElementById('btn-records-back-to-menu'),
 
   // クイズ画面の共通・4択用要素
   get elQuizCard() { return document.querySelector('.quiz-card'); },
@@ -106,6 +111,15 @@ export const el = {
   elBtnFilterCollected: document.getElementById('btn-filter-collected'),
   elBtnFilterUncollected: document.getElementById('btn-filter-uncollected'),
 
+  // 過去の記録画面の要素
+  elRecordsList: document.getElementById('records-list'),
+  elNoRecordsMsg: document.getElementById('no-records-msg'),
+  elBestTaPopular: document.getElementById('best-ta-popular'),
+  elBestTaAll: document.getElementById('best-ta-all'),
+  elBestEndlessPopular: document.getElementById('best-endless-popular'),
+  elBestEndlessAll: document.getElementById('best-endless-all'),
+  elBestSuperhardTime: document.getElementById('best-superhard-time'),
+
   // 効果音・ポップアップ・データ管理用
   elSoundMuteCheckbox: document.getElementById('sound-mute-checkbox'),
   elSoundVolumeSlider: document.getElementById('sound-volume-slider'),
@@ -132,6 +146,9 @@ export function switchScreen(screenId) {
   el.elQuizScreen.classList.add('hidden');
   el.elDictionaryScreen.classList.add('hidden');
   el.elResultScreen.classList.add('hidden');
+  if (el.elRecordsScreen) {
+    el.elRecordsScreen.classList.add('hidden');
+  }
 
   // 画面が切り替わるので、2択用のカード余白クラスをリセットする
   if (el.elQuizCard) {
@@ -269,6 +286,9 @@ export function renderDictionary() {
       let taBtnHtml = '';
       let infoHtml = '';
 
+      const similarBreeds = dict.getSimilarBreeds(key);
+      const similarText = similarBreeds.length > 0 ? similarBreeds.join('、') : 'なし';
+
       if (dogWins === 0) {
         elCard.className = 'dict-card locked';
         starsHtml = `
@@ -287,6 +307,7 @@ export function renderDictionary() {
         infoHtml = `
           <div class="dict-info-text">原産国：？？？</div>
           <div class="dict-info-text">大きさ：？？？</div>
+          <div class="dict-info-text">似てる犬：？？？</div>
           <div class="dict-info-text">ベスト：${highScore}点</div>
           <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
         `;
@@ -308,6 +329,7 @@ export function renderDictionary() {
         infoHtml = `
           <div class="dict-info-text">原産国：${dogData.origin}</div>
           <div class="dict-info-text">大きさ：${dogData.size}</div>
+          <div class="dict-info-text">似てる犬：${similarText}</div>
           <div class="dict-info-text">ベスト：${highScore}点</div>
           <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
         `;
@@ -329,6 +351,7 @@ export function renderDictionary() {
         infoHtml = `
           <div class="dict-info-text">原産国：${dogData.origin}</div>
           <div class="dict-info-text">大きさ：${dogData.size}</div>
+          <div class="dict-info-text">似てる犬：${similarText}</div>
           <div class="dict-info-text">ベスト：${highScore}点</div>
           <div class="dict-info-text">正答率：${accuracy}% (${dogWins}/${attempts}回)</div>
         `;
@@ -451,6 +474,60 @@ export function showQuitConfirmModal(show) {
       el.elQuitConfirmModal.classList.remove('hidden');
     } else {
       el.elQuitConfirmModal.classList.add('hidden');
+    }
+  }
+}
+
+/**
+ * 過去の記録画面を描画します。
+ */
+export function renderRecords() {
+  // 自己ベストの取得
+  const taPopularBest = gameState.saveData['popular_timeattack_best'] || null;
+  const taAllBest = gameState.saveData['all_timeattack_best'] || null;
+  const endlessPopularBest = gameState.saveData['popular_endless_best'] || 0;
+  const endlessAllBest = gameState.saveData['all_endless_best'] || 0;
+  const superhardBest = gameState.saveData['superhard_timeattack_best'] || null;
+
+  if (el.elBestTaPopular) el.elBestTaPopular.textContent = taPopularBest ? `${taPopularBest.toFixed(2)} 秒` : '--';
+  if (el.elBestTaAll) el.elBestTaAll.textContent = taAllBest ? `${taAllBest.toFixed(2)} 秒` : '--';
+  if (el.elBestEndlessPopular) el.elBestEndlessPopular.textContent = `${endlessPopularBest} 問`;
+  if (el.elBestEndlessAll) el.elBestEndlessAll.textContent = `${endlessAllBest} 問`;
+  if (el.elBestSuperhardTime) el.elBestSuperhardTime.textContent = superhardBest ? `${superhardBest.toFixed(2)} 秒` : '--';
+
+  // 履歴一覧の描画
+  const records = gameState.saveData._play_records || [];
+  if (el.elRecordsList) {
+    el.elRecordsList.innerHTML = '';
+    if (records.length === 0) {
+      if (el.elNoRecordsMsg) el.elNoRecordsMsg.classList.remove('hidden');
+    } else {
+      if (el.elNoRecordsMsg) el.elNoRecordsMsg.classList.add('hidden');
+      
+      records.forEach(rec => {
+        const tr = document.createElement('tr');
+        
+        // モード名の日本語変換
+        let modeName = rec.mode;
+        if (rec.mode === '4choices') modeName = '4択クイズ';
+        else if (rec.mode === 'timeattack') modeName = '2択タイムアタック';
+        else if (rec.mode === 'endless') modeName = '2択エンドレス';
+        else if (rec.mode === 'superhard') modeName = '激似2択対決';
+        
+        // 難易度の日本語変換
+        let diffName = rec.difficulty;
+        if (rec.difficulty === 'easy') diffName = 'かんたん';
+        else if (rec.difficulty === 'hard') diffName = 'むずかしい';
+        else if (rec.difficulty === 'superhard') diffName = '激似ペア';
+        
+        tr.innerHTML = `
+          <td>${rec.date}</td>
+          <td><strong>${modeName}</strong></td>
+          <td><span class="diff-badge ${rec.difficulty}">${diffName}</span></td>
+          <td style="color: var(--primary-hover); font-weight: bold;">${rec.score}</td>
+        `;
+        el.elRecordsList.appendChild(tr);
+      });
     }
   }
 }

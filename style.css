@@ -831,7 +831,7 @@ body {
   border-radius: 12px;
   width: 100%;
   height: auto; /* 画像の縦横比を保つために高さを自動化 */
-  max-height: 150px; /* スクロールが発生しないように最大高さを制限 */
+  max-height: 225px; /* スクロールが発生しないように最大高さを制限 */
   aspect-ratio: 4 / 3; /* 画像の縦横比を4:3にする */
 }
 
@@ -1156,7 +1156,8 @@ body {
 
 /* カウントダウン数字 */
 .prep-countdown {
-  font-size: 4rem;
+  font-size: 3rem;
+  white-space: nowrap;
   font-weight: 700;
   color: var(--incorrect-color);
   animation: scalePulse 1s infinite;
@@ -1351,11 +1352,12 @@ body {
 
 /* カウントダウン数字 */
 .prep-countdown {
-  font-size: 4rem;
+  font-size: 3rem;
   font-weight: 700;
   color: var(--incorrect-color);
   animation: scalePulse 1s infinite;
   margin-top: 10px;
+  white-space: nowrap;
 }
 
 @keyframes scalePulse {
@@ -1520,3 +1522,107 @@ body {
 .data-mgmt-status.error {
   color: var(--incorrect-color);
 }
+
+/* ================= 過去の記録画面のスタイル ================= */
+.records-summary-box {
+  background: var(--bg-color);
+  border: 3px solid var(--secondary);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.best-record-item {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px dashed var(--secondary);
+  padding-bottom: 8px;
+}
+
+.best-record-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.best-title {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  font-weight: 700;
+}
+
+.best-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary-hover);
+  margin-top: 2px;
+}
+
+.records-history-area {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.records-history-area h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-dark);
+}
+
+.records-table-wrapper {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 2px solid var(--secondary);
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+
+.records-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.records-table th, .records-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--secondary);
+}
+
+.records-table th {
+  background-color: var(--secondary);
+  font-weight: 700;
+  color: var(--text-dark);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.records-table tr:last-child td {
+  border-bottom: none;
+}
+
+.no-records-msg {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-light);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* 激似対決ボタン */
+.btn-superhard {
+  background-color: #D3756B; /* くすんだレッド系 */
+  color: #FFFFFF;
+}
+
+.btn-superhard:hover {
+  background-color: #BD5D53;
+  transform: scale(1.02);
+}
+
+.btn-superhard:active {
+  transform: scale(0.98) translateY(4px);
+}
+

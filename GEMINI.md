@@ -24,19 +24,32 @@ DogAPI（インターネット上の犬のデータを提供する仕組み）�
 
 | ファイル名 | 配置パス | 説明 | 追加日 | バージョン |
 | :--- | :--- | :--- | :--- | :--- |
-| [GEMINI.md](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/GEMINI.md) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/GEMINI.md` | プロジェクト管理・開発状況記録ドキュメント | 2026-05-24 | v1.6.0 |
-| [index.html](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/index.html) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/index.html` | アプリ画面レイアウト（スタート、クイズ、図鑑、結果画面） | 2026-05-24 | v1.2.2 |
-| [style.css](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/style.css) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/style.css` | アプリデザインスタイル（配色、カード、アニメーションなど） | 2026-05-24 | v1.2.2 |
-| [app.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/app.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/app.js` | アプリのエントリーポイント（イベント設定・初期化） | 2026-05-24 | v1.6.0 |
-| [state.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/state.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/state.js` | 状態（データ）およびセーブデータの管理 | 2026-05-29 | v1.6.0 |
-| [ui.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/ui.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/ui.js` | 画面の切り替え、図鑑表示、ポップアップ表示等のUI制御 | 2026-05-29 | v1.6.0 |
-| [game.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/game.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/game.js` | クイズのルール進行、判定、スコア等のゲームロジック | 2026-05-29 | v1.6.0 |
-| [dictionary.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/dictionary.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/dictionary.js` | 犬種名の日本語翻訳と豆知識データベース | 2026-05-24 | v1.6.0 |
+| [GEMINI.md](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/GEMINI.md) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/GEMINI.md` | プロジェクト管理・開発状況記録ドキュメント | 2026-05-24 | v2.0.0 |
+| [index.html](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/index.html) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/index.html` | アプリ画面レイアウト（スタート、クイズ、図鑑、結果画面） | 2026-05-24 | v2.0.0 |
+| [style.css](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/style.css) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/style.css` | アプリデザインスタイル（配色、カード、アニメーションなど） | 2026-05-24 | v2.0.0 |
+| [app.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/app.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/app.js` | アプリのエントリーポイント（イベント設定・初期化） | 2026-05-24 | v2.0.0 |
+| [state.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/state.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/state.js` | 状態（データ）およびセーブデータの管理 | 2026-05-29 | v2.0.0 |
+| [ui.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/ui.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/ui.js` | 画面の切り替え、図鑑表示、ポップアップ表示等のUI制御 | 2026-05-29 | v2.0.0 |
+| [game.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/game.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/game.js` | クイズのルール進行、判定、スコア等のゲームロジック | 2026-05-29 | v2.0.0 |
+| [dictionary.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/dictionary.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/dictionary.js` | 犬種名の日本語翻訳と豆知識データベース | 2026-05-24 | v2.0.0 |
 | [api.js](file:///C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/api.js) | `C:/Users/akiex/.gemini/antigravity/scratch/DogCollection/api.js` | DogAPIとの通信および画像ロードリトライ処理 | 2026-05-30 | v1.6.0 |
 
 ---
 ## 4. 変更履歴
 コードやドキュメントの重要な変更履歴を記録します。
+
+### v2.0.0 (2026-06-20)
+- 成績履歴の保存・表示および超高難易度「激似対決」モードの実装
+  - スタート画面から遷移でき、自己ベストや最新のプレイ成績（20件）を表示・削除できる「過去の記録」ページを新設（`index.html`, `style.css`, `ui.js`, `app.js`）。
+  - クイズクリア時（4択、タイムアタック、エンドレス、激似対決）にプレイ実績（日時、モード、難易度、成績）を自動で `localStorage` へ追記保存するロジックを実装（`state.js`, `game.js`）。
+  - 図鑑で解放された犬種に、見た目が似ている他の犬種の日本語名を表示する「似ている犬種」項目を追加（`dictionary.js`, `ui.js`）。
+  - 4択クイズの「おやつ（ヒント）」の最大上限を3回に変更。3回目に頭文字を表示し、選択肢を2択残してプレイヤー自身が推理できる楽しさを維持（`game.js`）。
+  - 成績と図鑑解放を連動（案A）：4択（むずかしい）で8点以上で正解した場合、または2択タイムアタックを20秒以内でクリアした場合、該当犬種の図鑑が一気に全解放（段階3）される仕組みを実装（`game.js`）。
+  - スマホでの2択画像上下並び時の高さを1.5倍（225px）に拡大し、写真を見やすく調整（`style.css`）。
+  - 準備画面カウントダウン後の「スタート！🐾」が改行されて崩れるのを防止するため `white-space: nowrap` とサイズ調整を適用（`style.css`）。
+  - 音量設定エリアをスタート画面の最下部へ移動（`index.html`）。
+  - 柴犬と秋田犬、ゴールデンとラブラドールなどの激似ペアのみが出題される、超高難易度の2択タイムアタック「激似2択対決」モードを新設（`dictionary.js`, `index.html`, `ui.js`, `game.js`, `app.js`）。
+  - 仕様変更および新機能に合わせて自動テストケース（Playwright）のアサーションを改修し、全件テストのパスを確認。
 
 ### v1.9.0 (2026-06-08)
 - アプリケーションの全体改善リリースの実装

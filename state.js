@@ -23,9 +23,10 @@ export const gameState = {
   currentDogImageUrl: "",        // 現在出題中の犬の画像URL
   currentScore: 0,               // 今回のクイズの正解数
   currentPoints: 0,              // 今回のクイズの獲得スコア（最大100点）
-  hintCount: 0,                  // 現在の問題でヒントを使った回数（0〜4）
+  hintCount: 0,                  // 現在の問題でヒントを使った回数（0〜3）
   quizMode: 'popular',           // 出題モード（'popular' or 'all'）
   difficulty: 'easy',            // 難易度（'easy' or 'hard'）
+  isSuperHardMode: false,        // 激似2択モードが有効かどうか
 
   // 2択ゲーム用の追加ステート
   activeGameType: '4choices',    // '4choices', 'timeattack', 'endless'
@@ -71,12 +72,21 @@ export function loadSaveData() {
         // 効果音設定の復元
         gameState.soundMuted = parsed._sound_muted !== undefined ? parsed._sound_muted : false;
         gameState.soundVolume = parsed._sound_volume !== undefined ? parsed._sound_volume : 0.5;
+        
+        // 履歴データがない場合は初期化
+        if (!parsed._play_records) {
+          gameState.saveData._play_records = [];
+        }
       } else {
         console.warn("セーブデータの形式が正しくありません。初期化します。");
+        gameState.saveData._play_records = [];
       }
     } catch (e) {
       console.error("セーブデータの読み込みに失敗しました。初期化します。", e);
+      gameState.saveData._play_records = [];
     }
+  } else {
+    gameState.saveData._play_records = [];
   }
 }
 
@@ -93,4 +103,44 @@ export function saveGameData() {
   } catch (e) {
     console.error("セーブデータの保存に失敗しました。", e);
   }
+}
+
+/**
+ * プレイ記録を履歴に追加して保存します。
+ * @param {string} mode - ゲームモード ('4choices', 'timeattack', 'endless', 'superhard')
+ * @param {string} difficulty - 難易度 ('easy', 'hard')
+ * @param {string} scoreText - スコアやタイムなどの結果文字列
+ */
+export function addPlayRecord(mode, difficulty, scoreText) {
+  if (!gameState.saveData._play_records) {
+    gameState.saveData._play_records = [];
+  }
+  
+  const now = new Date();
+  const dateString = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  
+  const record = {
+    date: dateString,
+    mode: mode,
+    difficulty: difficulty,
+    score: scoreText
+  };
+  
+  // 先頭に追加（最新が上に来るように）
+  gameState.saveData._play_records.unshift(record);
+  
+  // 最大20件まで保持
+  if (gameState.saveData._play_records.length > 20) {
+    gameState.saveData._play_records = gameState.saveData._play_records.slice(0, 20);
+  }
+  
+  saveGameData();
+}
+
+/**
+ * プレイ記録をすべて消去します。
+ */
+export function clearPlayRecords() {
+  gameState.saveData._play_records = [];
+  saveGameData();
 }

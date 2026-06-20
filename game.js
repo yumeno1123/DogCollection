@@ -7,8 +7,8 @@
  * 純粋なゲーム進行ロジックを管理するモジュールファイルです。
  */
 
-import { gameState, saveGameData } from './state.js';
-import { getDogData, POPULAR_DOGS, ALL_DOGS_DICTIONARY, SIMILAR_DOG_GROUPS } from './dictionary.js';
+import { gameState, saveGameData, addPlayRecord } from './state.js';
+import { getDogData, POPULAR_DOGS, ALL_DOGS_DICTIONARY, SIMILAR_DOG_GROUPS, SUPER_HARD_PAIRS } from './dictionary.js';
 import { loadDogImageWithRetry, fetchDogImage } from './api.js';
 import { el, switchScreen, showLoading, showPrepScreen, renderNewUnlocksList, showQuitConfirmModal } from './ui.js';
 
@@ -253,7 +253,20 @@ async function preloadQuizData(gameType, count, onProgress) {
     // 2択ゲーム
     for (let i = 0; i < totalCount; i++) {
       const correctKey = gameState.currentQuizList[i];
-      const wrongKey = getIncorrectChoices(correctKey, 1)[0];
+      let wrongKey = "";
+      
+      if (gameState.isSuperHardMode) {
+        // 激似ペアの相手側を特定
+        const activePair = SUPER_HARD_PAIRS.find(p => p.breedA === correctKey || p.breedB === correctKey);
+        if (activePair) {
+          wrongKey = (correctKey === activePair.breedA) ? activePair.breedB : activePair.breedA;
+        } else {
+          wrongKey = getIncorrectChoices(correctKey, 1)[0];
+        }
+      } else {
+        wrongKey = getIncorrectChoices(correctKey, 1)[0];
+      }
+      
       const isLeftCorrect = Math.random() < 0.5;
       prepList.push({
         correctKey,
@@ -349,12 +362,16 @@ async function preloadQuizData(gameType, count, onProgress) {
  */
 export async function startQuizGame(gameType, targetBreedKey = null) {
   gameState.activeGameType = gameType || '4choices';
+  gameState.isSuperHardMode = (gameType === 'superhard');
 
-  const selectedMode = document.querySelector('input[name="出題モード"]:checked').value;
-  const selectedDiff = document.querySelector('input[name="難易度"]:checked').value;
+  const elModeChecked = document.querySelector('input[name="出題モード"]:checked');
+  const elDiffChecked = document.querySelector('input[name="難易度"]:checked');
 
-  gameState.quizMode = selectedMode;
-  gameState.difficulty = selectedDiff;
+  gameState.quizMode = elModeChecked ? elModeChecked.value : 'popular';
+  gameState.difficulty = elDiffChecked ? elDiffChecked.value : 'easy';
+  if (gameState.isSuperHardMode) {
+    gameState.difficulty = 'superhard';
+  }
 
   clearAllTimers();
 
@@ -377,6 +394,13 @@ export async function startQuizGame(gameType, targetBreedKey = null) {
       gameState.currentQuizList = Array(10).fill(finalTargetBreed);
     } else {
       generateQuizList(10, true);
+    }
+  } else if (gameState.activeGameType === 'superhard') {
+    // 激似ペアから1つランダムに選ぶ
+    const pair = SUPER_HARD_PAIRS[Math.floor(Math.random() * SUPER_HARD_PAIRS.length)];
+    gameState.currentQuizList = [];
+    for (let i = 0; i < 10; i++) {
+      gameState.currentQuizList.push(Math.random() < 0.5 ? pair.breedA : pair.breedB);
     }
   } else {
     generateQuizList(100);
@@ -404,9 +428,26 @@ export async function startQuizGame(gameType, targetBreedKey = null) {
     } finally {
       el.elPrepTargetLoading.classList.add('hidden');
     }
+  } else if (gameState.activeGameType === 'superhard') {
+    el.elPrepTargetBox.classList.add('hidden');
+    el.elPrepGeneralBox.classList.remove('hidden');
+    
+    const correctBreed = gameState.currentQuizList[0];
+    const activePair = SUPER_HARD_PAIRS.find(p => p.breedA === correctBreed || p.breedB === correctBreed);
+    const pairTitle = activePair ? activePair.title : "そっくり犬種";
+    
+    const elInstruction = document.querySelector('#prep-general-box .prep-instruction');
+    if (elInstruction) {
+      elInstruction.textContent = `そっくり対決！「${pairTitle}」がはじまるよ。じゅんびしてね！ ⚔️`;
+    }
   } else {
     el.elPrepTargetBox.classList.add('hidden');
     el.elPrepGeneralBox.classList.remove('hidden');
+    
+    const elInstruction = document.querySelector('#prep-general-box .prep-instruction');
+    if (elInstruction) {
+      elInstruction.textContent = "まもなくゲームがはじまるよ。じゅんびしてね！";
+    }
   }
 
   el.elPrepProgressBar.style.width = '0%';
@@ -464,7 +505,7 @@ export async function startQuizGame(gameType, targetBreedKey = null) {
     el.elTwoChoicesArea.classList.remove('hidden');
     el.elQuizScore.classList.add('hidden');
 
-    if (gameState.activeGameType === 'timeattack') {
+    if (gameState.activeGameType === 'timeattack' || gameState.activeGameType === 'superhard') {
       el.elQuizTimer.classList.remove('hidden');
       el.elTimerBarContainer.classList.add('hidden');
       el.elQuizTimer.textContent = "タイム: 0.00 秒";
@@ -571,7 +612,7 @@ async function showQuestion() {
   if (gameState.difficulty === 'hard') {
     el.elHintActionArea.classList.remove('hidden');
     el.elBtnHint.disabled = false;
-    el.elBtnHint.innerHTML = '<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り4回)';
+    el.elBtnHint.innerHTML = '<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り3回)';
     el.elHintStatus.textContent = "※おやつをあげると選択肢が減ったり頭文字がわかるよ";
   } else {
     el.elHintActionArea.classList.add('hidden');
@@ -627,14 +668,19 @@ function selectAnswer(selectedKey, clickedBtn) {
       else if (gameState.hintCount === 1) pointsEarned = 8;
       else if (gameState.hintCount === 2) pointsEarned = 6;
       else if (gameState.hintCount === 3) pointsEarned = 4;
-      else if (gameState.hintCount === 4) pointsEarned = 2;
     }
 
     gameState.currentPoints += pointsEarned;
     el.elQuizScore.textContent = `スコア：${gameState.currentPoints} 点 / せいかい：${gameState.currentScore}問`;
     
     const prevWins = gameState.saveData[correctKey] || 0;
-    gameState.saveData[correctKey] = prevWins + 1;
+    let winsToAdd = 1;
+    if (pointsEarned >= 8) {
+      if (prevWins < 3) {
+        winsToAdd = 3 - prevWins;
+      }
+    }
+    gameState.saveData[correctKey] = prevWins + winsToAdd;
 
     const prevHighScore = gameState.saveData[`${correctKey}_highscore`] || 0;
     if (pointsEarned > prevHighScore) {
@@ -644,11 +690,13 @@ function selectAnswer(selectedKey, clickedBtn) {
     saveGameData();
 
     const newWins = gameState.saveData[correctKey];
-    if (newWins === 1 || newWins === 2 || newWins === 3) {
-      gameState.newlyUnlockedDogs.push({
-        name: gameState.currentQuestionDog.japanese,
-        stage: newWins
-      });
+    if (newWins > prevWins) {
+      for (let st = prevWins + 1; st <= newWins; st++) {
+        gameState.newlyUnlockedDogs.push({
+          name: gameState.currentQuestionDog.japanese,
+          stage: st
+        });
+      }
     }
   } else {
     playIncorrectSound(); // 不正解の効果音を再生
@@ -946,7 +994,7 @@ function endGameTimeAttack() {
   
   const finalTime = gameState.timeAttackElapsedTime + gameState.timeAttackPenaltySeconds;
 
-  const bestTimeKey = `${gameState.quizMode}_timeattack_best`;
+  const bestTimeKey = gameState.isSuperHardMode ? 'superhard_timeattack_best' : `${gameState.quizMode}_timeattack_best`;
   const prevBestTime = gameState.saveData[bestTimeKey] || 999999;
   let isNewRecord = false;
 
@@ -955,6 +1003,29 @@ function endGameTimeAttack() {
     saveGameData();
     isNewRecord = true;
   }
+
+  // タイムアタックで20秒以内の場合は一気に全解放 (案A)
+  if (gameState.activeGameType === 'timeattack' && finalTime <= 20) {
+    const targetBreed = gameState.currentQuizList[0];
+    const prevWins = gameState.saveData[targetBreed] || 0;
+    if (prevWins < 3) {
+      gameState.saveData[targetBreed] = 3;
+      saveGameData();
+      
+      const breedData = getDogData(targetBreed);
+      for (let st = prevWins + 1; st <= 3; st++) {
+        gameState.newlyUnlockedDogs.push({
+          name: breedData.japanese,
+          stage: st
+        });
+      }
+    }
+  }
+
+  // プレイ履歴を追加保存
+  const mode = gameState.isSuperHardMode ? 'superhard' : 'timeattack';
+  const diff = gameState.isSuperHardMode ? 'superhard' : gameState.difficulty;
+  addPlayRecord(mode, diff, `${finalTime.toFixed(2)} 秒 (誤答 ${gameState.timeAttackWrongCount}回)`);
 
   showResultScreen2Choices('timeattack', {
     finalTime: finalTime,
@@ -981,6 +1052,9 @@ function endGameEndless(isTimeout) {
     isNewRecord = true;
   }
 
+  // プレイ履歴を追加保存
+  addPlayRecord('endless', gameState.difficulty, `${gameState.endlessScore} 問連続正解`);
+
   showResultScreen2Choices('endless', {
     score: gameState.endlessScore,
     isNewRecord: isNewRecord,
@@ -994,10 +1068,10 @@ function endGameEndless(isTimeout) {
  * クイズ画面でヒント（おやつ）を使用します。
  */
 export function useHint() {
-  if (gameState.difficulty !== 'hard' || gameState.hintCount >= 4) return;
+  if (gameState.difficulty !== 'hard' || gameState.hintCount >= 3) return;
 
   gameState.hintCount++;
-  el.elBtnHint.innerHTML = `<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り${4 - gameState.hintCount}回)`;
+  el.elBtnHint.innerHTML = `<span class="hint-icon">🍖</span> おやつ（ヒント）をあげる！ (残り${3 - gameState.hintCount}回)`;
 
   const correctKey = gameState.currentQuestionDog.key;
   // ハズレのボタンを特定（元のDOM配列の順番のままで、消え方に一貫性を持たせる）
@@ -1005,20 +1079,14 @@ export function useHint() {
 
   if (gameState.hintCount === 1) {
     if (wrongButtons[0]) wrongButtons[0].style.visibility = 'hidden';
-    el.elHintStatus.textContent = "おやつを喜んで食べているよ！ハズレが1つ消えた！(ヒント残り3回)";
+    el.elHintStatus.textContent = "おやつを喜んで食べているよ！ハズレが1つ消えた！(ヒント残り2回)";
   } 
   else if (gameState.hintCount === 2) {
     if (wrongButtons[0]) wrongButtons[0].style.visibility = 'hidden';
     if (wrongButtons[1]) wrongButtons[1].style.visibility = 'hidden';
-    el.elHintStatus.textContent = "美味しい！ともっと喜んでいます！ハズレがもう1つ消えた！(ヒント残り2回)";
+    el.elHintStatus.textContent = "美味しい！ともっと喜んでいます！ハズレがもう1つ消えた！(残り2択 / ヒント残り1回)";
   } 
   else if (gameState.hintCount === 3) {
-    if (wrongButtons[0]) wrongButtons[0].style.visibility = 'hidden';
-    if (wrongButtons[1]) wrongButtons[1].style.visibility = 'hidden';
-    if (wrongButtons[2]) wrongButtons[2].style.visibility = 'hidden';
-    el.elHintStatus.textContent = "大喜び！さらにハズレが消えて残り2択になったよ！(ヒント残り1回)";
-  } 
-  else if (gameState.hintCount === 4) {
     const jName = gameState.currentQuestionDog.japanese;
     const firstChar = jName.charAt(0);
 
@@ -1026,7 +1094,7 @@ export function useHint() {
     el.elTextHintBox.classList.remove('hidden');
 
     el.elBtnHint.disabled = true;
-    el.elHintStatus.textContent = "ヒントをすべて使いました！";
+    el.elHintStatus.textContent = "おやつを大喜びで食べているよ！ヒントをすべて使いました！";
   }
 }
 
@@ -1055,6 +1123,9 @@ function showResultScreen() {
   } else {
     el.elResultMessage.textContent = "クイズに挑戦してくれてありがとう！もう一回やってみよう！🐶";
   }
+
+  // プレイ履歴を追加保存
+  addPlayRecord('4choices', gameState.difficulty, `${gameState.currentScore}問正解 / ${gameState.currentPoints}点`);
 
   renderNewUnlocksList();
 }

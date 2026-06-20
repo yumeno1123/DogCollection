@@ -145,9 +145,9 @@ test.describe('犬種当てクイズ＆ポケット犬種図鑑 アプリケー�
     const btnHint = page.locator('#btn-quiz-hint');
     await expect(btnHint).toBeVisible();
     await btnHint.click();
-    await expect(page.locator('#hint-status-text')).toContainText('ヒント残り3回');
-    await btnHint.click();
     await expect(page.locator('#hint-status-text')).toContainText('ヒント残り2回');
+    await btnHint.click();
+    await expect(page.locator('#hint-status-text')).toContainText('ヒント残り1回');
 
     // ぼかしは廃止されたため、常に「blur-level-0」（ぼかしなし）であることを確認
     await expect(page.locator('#quiz-dog-image')).toHaveClass(/blur-level-0/);

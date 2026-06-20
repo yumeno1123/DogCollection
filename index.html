@@ -77,22 +77,6 @@
                 </div>
               </div>
             </div>
-            
-            <!-- 設定：効果音 -->
-            <div class="setting-group">
-              <h3>3. 効果音の設定</h3>
-              <div class="sound-settings-control">
-                <label class="sound-switch">
-                  <input id="sound-mute-checkbox" type="checkbox">
-                  <span class="sound-switch-label">🔇 ミュート（音をけす）</span>
-                </label>
-                <div class="volume-slider-container">
-                  <span>🔈</span>
-                  <input id="sound-volume-slider" type="range" min="0" max="100" value="50">
-                  <span>🔊</span>
-                </div>
-              </div>
-            </div>
           </div>
           
           <!-- スタート＆図鑑ボタン -->
@@ -100,7 +84,27 @@
             <button id="btn-start-game" class="btn btn-primary btn-large">4択クイズ (10問) 🐾</button>
             <button id="btn-start-timeattack" class="btn btn-primary btn-large btn-timeattack">2択タイムアタック (10問) ⏱️</button>
             <button id="btn-start-endless" class="btn btn-primary btn-large btn-endless">2択エンドレス (1問3秒) ♾️</button>
-            <button id="btn-view-dictionary" class="btn btn-secondary btn-large">図鑑をみる 📖</button>
+            <button id="btn-start-superhard" class="btn btn-primary btn-large btn-superhard">激似2択対決 (10問) ⚔️</button>
+            <div style="display: flex; gap: 10px; width: 100%;">
+              <button id="btn-view-dictionary" class="btn btn-secondary btn-large" style="margin-top: 0; flex: 1;">図鑑をみる 📖</button>
+              <button id="btn-view-records" class="btn btn-accent btn-large" style="margin-top: 0; flex: 1;">過去の記録 🏆</button>
+            </div>
+          </div>
+
+          <!-- 設定：効果音（最下部へ移動） -->
+          <div class="setting-group" style="margin-top: 24px;">
+            <h3>3. 効果音の設定</h3>
+            <div class="sound-settings-control">
+              <label class="sound-switch">
+                <input id="sound-mute-checkbox" type="checkbox">
+                <span class="sound-switch-label">🔇 ミュート（音をけす）</span>
+              </label>
+              <div class="volume-slider-container">
+                <span>🔈</span>
+                <input id="sound-volume-slider" type="range" min="0" max="100" value="50">
+                <span>🔊</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -287,6 +291,59 @@
         <!-- 戻るボタン -->
         <div class="footer-action">
           <button id="btn-back-to-menu" class="btn btn-secondary btn-large">スタート画面に戻る 🏠</button>
+        </div>
+      </section>
+
+      <!-- ================= RECORDS SCREEN (記録画面) ================= -->
+      <section id="records-screen" class="app-screen hidden">
+        <div class="card records-card">
+          <div class="dog-illustration" style="font-size: 3rem;">🏆</div>
+          <h2>過去のクリア記録</h2>
+          <p class="subtitle">これまでのクイズやタイムアタックの成績を確認できるよ！</p>
+          
+          <!-- 自己ベストサマリー -->
+          <div class="records-summary-box">
+            <div class="best-record-item">
+              <span class="best-title">⏱️ 2択タイムアタック自己ベスト</span>
+              <div class="best-value"><span id="best-ta-popular">--</span> 秒 (おなじみ) / <span id="best-ta-all">--</span> 秒 (全犬種)</div>
+            </div>
+            <div class="best-record-item" style="margin-top: 10px;">
+              <span class="best-title">♾️ 2択エンドレス最高連勝</span>
+              <div class="best-value"><span id="best-endless-popular">--</span> 問 (おなじみ) / <span id="best-endless-all">--</span> 問 (全犬種)</div>
+            </div>
+            <div class="best-record-item" style="margin-top: 10px;">
+              <span class="best-title">⚔️ 激似2択対決自己ベスト</span>
+              <div class="best-value"><span id="best-superhard-time">--</span> 秒</div>
+            </div>
+          </div>
+
+          <!-- 履歴エリア -->
+          <div class="records-history-area">
+            <h3>🐾 最近のプレイ履歴 (最新20件)</h3>
+            <div class="records-table-wrapper">
+              <table class="records-table">
+                <thead>
+                  <tr>
+                    <th>日時</th>
+                    <th>モード</th>
+                    <th>難易度</th>
+                    <th>成績</th>
+                  </tr>
+                </thead>
+                <tbody id="records-list">
+                  <!-- JavaScriptで動的に挿入されます -->
+                </tbody>
+              </table>
+              <div id="no-records-msg" class="no-records-msg hidden">
+                まだ記録がないよ。クイズで遊んでみてね！🐾
+              </div>
+            </div>
+          </div>
+
+          <div class="button-group" style="flex-direction: row; gap: 10px; margin-top: 20px;">
+            <button id="btn-records-clear" class="btn btn-accent" style="flex: 1; margin-top: 0; padding: 12px 8px; font-size: 0.9rem;">記録をリセット 🗑️</button>
+            <button id="btn-records-back-to-menu" class="btn btn-secondary" style="flex: 1; margin-top: 0; padding: 12px 8px; font-size: 0.9rem;">スタート画面 🏠</button>
+          </div>
         </div>
       </section>
 
